@@ -240,16 +240,7 @@ class UPDATE_RASP:
             return 0
 
     
-    def start(self):
-
-        
-
-
-        return self.get_database_info(self.SELECT)
-
-        
-
-        
+    def start(self):        
         day_type = self.get_day_type()
 
         if day_type != None: # отсекаем воскресенье
