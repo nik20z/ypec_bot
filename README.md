@@ -20,7 +20,7 @@
     bs4
     datetime
     json
-    logger
+    loguru
     lxml
     os
     requests
