@@ -229,6 +229,8 @@ class UPDATE_RASP:
         self.now = now
         self.today = today
         self.get_database_info = get_database_info
+        [self.all_timetables, self.spam_titles] = self.get_database_info(self.SELECT)
+
 
     
     def get_day_type(self): # 0: пн-пт; -1: сб; None: вс 
