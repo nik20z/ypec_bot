@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 
 from parse.config import lessons_time
 from parse.config import url_zmnext, url_rasp_s, url_rasp_sp
+from parse.config import ru_alphabet, eng_chr_to_ru
 
 
 
@@ -22,13 +23,13 @@ class PARSE:
         self.student_d = {}
         self.teacher_d = {}
         self.groups = self.get_array_from_select(url_rasp_s)
-        #self.teachers = get_array_from_select(url_rasp_sp)
+        self.teachers = self.get_array_from_select(url_rasp_sp)
 
     
     def get_array_from_select(self, url: str):
         r = requests.get(url)
         soup = BeautifulSoup(r.text, 'lxml')
-        return [i.text for i in soup.find('select').find_all('option') if i.text != '']
+        return [i.text for i in soup.find('select').find_all('option') if i.text not in ('', ' ')]
 
     
     def get_date_and_offset(self, soup):
@@ -39,21 +40,50 @@ class PARSE:
             return date, -1
         return date, 0
 
+
+    # коэффициент Танимото - степень схожести строк
+    def tanimoto(self, s1: str, s2: str):
+        a, b = len(s1), len(s2)
+        [str_to_iterate, str_to_compare] = [s1, s2] if a > b else [s2, s1]
+        c = len([1 for sym in str_to_iterate if sym in str_to_compare])
+        return c / (a + b - c)
+
     
-    def similarity_check(self, title: str, array_check: list):
-        if title not in array_check:
-            return False # пытаемся исключить ошибку с неправильным названием группы
+    # заменяет английские буквы, похожие на русские
+    def replace_english_chars(self, title: str):
+        for i in title:
+            if i.isalpha() and i not in ru_alphabet and i in eng_chr_to_ru:
+                title = title.replace(i, eng_chr_to_ru[i])
         return title
 
     
-    def get_title(type_: str, td):
-        array_check = self.groups
-        #if type_ == 't':
-            #array_check = self.teachers
-        title_soup = td.find('b')
-        if title_soup == None:
+    # обрабатываем ошибки в написании названия группы / ФИО препопадавателя
+    def get_title(self, type_: str, title: str, array_check: list):
+        max_coef, new_title = 0, ''
+        
+        if title in (None, '', ' '):
             return False
-        return self.similarity_check(title_soup.text, array_check)
+        
+        if type_ == 'g':
+            title = title_soup.text.title()
+
+        title = replace_english_chars(title)
+
+        if title in array_check: # если название корректное
+            return title
+        
+        number = title[:2]
+        for x in array_check:
+            # отбираем для сравнения группы одного курса
+            if type_ == 'g' and x[:2] != number:
+                continue
+
+            coef = tanimoto(title, x)
+            #print(x, coef)
+            if coef >= max_coef:
+                [max_coef, new_title] = coef, x
+
+        return new_title
 
     
     def replacements(self):
@@ -62,35 +92,38 @@ class PARSE:
         r = requests.get(self.url)
         soup = BeautifulSoup(r.text, 'lxml')
         table = soup.find('table', class_='isp')
-        first_string = table.find_all('td')[6:12]
+        first_string = table.find_all('td')[6:12] # костыль для первой строки
 
         [date_rasp, offset] = self.get_date_and_offset(soup)
 
+        # перебираем строки
         for i in range(0, str(table).count('/tr')-1):
             a = []
             tr = table.find_all('tr')[i]
+
+            # перебираем элементы строки
             for j in range(str(tr).count('/td')):
                 td = tr.find_all('td')[j]
-                if i == 0:
+                
+                if i == 0: # костыль для первой строки
                     td = first_string[j]
                 
-                group_check = self.get_title('g', td)
-
+                group_soup = td.find('b')
+                group_check = self.get_title('g', group_soup, self.groups)
                 if group_check:
                     group = group_check
                     self.student_d[group] = {}
                 else:
                     a.append(td.text)
 
-                if group_soup != None and group_soup.text in groups:
-                	group = group_soup.text
-                	self.student_d[group] = {}
-                else:
-                    a.append(td.text)
+            # добавляем инфу по паре для группы и преподавателя
             if a != [] and group != '':
                 num_les = a[0]
+                
+                # если пара повторяется, то просто изменяем её значение на строку
                 if num_les in self.student_d[group]:
                     num_les = ' '
+                
                 teacher = a[-1].title()
                 self.student_d[group][num_les] = [teacher, [a[1:-1]]]
 
@@ -98,12 +131,9 @@ class PARSE:
                 if ',' in teacher:
                     teacher_split = teacher.split(', ')
                 
-                for t in teacher_split:
-                    if t in ('', ' '):
-                        break
-                    if t[-1] != '.':
-                        t += '.'
-                    if t not in self.teacher_d:
+                for teacher in teacher_split:
+                    teacher = self.get_title('t', teacher, self.teachers)
+                    if teacher not in self.teacher_d:
                         self.teacher_d[t] = {}
                     self.teacher_d[t][num_les] = [group, [a[1:-1]]]
         

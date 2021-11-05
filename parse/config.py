@@ -22,3 +22,17 @@ url_zmnow = 'https://www.ypec.ru/rasp-zmnow' # timetable today
 url_zmnext = 'https://www.ypec.ru/rasp-zmnext' # timetable tomorrow
 url_rasp_s = 'https://www.ypec.ru/rasp-s' # students
 url_rasp_sp = 'https://www.ypec.ru/rasp-sp' # teachers
+
+
+ru_alphabet = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
+eng_chr_to_ru = {'A': 'А',
+                'B': 'В',
+                'C': 'С',
+                'E': 'Е',
+                'H': 'Н',
+                'K': 'К',
+                'M': 'М',
+                'O': 'О',
+                'P': 'Р',
+                'T': 'Т'
+                }
