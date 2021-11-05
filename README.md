@@ -22,6 +22,7 @@
     json
     loguru
     lxml
+    numpy
     os
     requests
     sqlite3
