@@ -158,7 +158,6 @@ class TABLE:
             view_add           BOOLEAN DEFAULT (0),
             view_time          BOOLEAN DEFAULT (1),
             joined             DATE,
-            #requests 		   INT     DEFAULT (0),
             bans			   INT     DEFAULT (0),
             timeout_ban		   INT     DEFAULT (0),
             last_action		   INT     DEFAULT (),
@@ -180,9 +179,8 @@ class TABLE:
 		cursor.execute("""CREATE TABLE IF NOT EXISTS statistics (
 			day                       DATE PRIMARY KEY,
 		    update_time               DATE,
-		    #requests        		  INT  DEFAULT (0),
+		    requests        		  INT  DEFAULT (0),
 		    new_users       		  INT  DEFAULT (0)""")
-		    #sent_spam_timetables 	  INT  DEFAULT (0))
 		connection.commit()
 
 
