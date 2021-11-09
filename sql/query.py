@@ -2,28 +2,33 @@ import threading
 import sqlite3 
 
 
-def lock_sql(func):
+def lock_sql(function):
 	def wrapper(*args, **kwargs):
 		lock.acquire(True)
 		try:
-			ret_func = func(*args, **kwargs)
+			ret_func = function(*args, **kwargs)
 		except sqlite3.OperationalError as e:
-			tableName = str(e).split(':')[-1].strip()
-			TABLE().create(tableName)
-			ret_func = func(*args, **kwargs)
+			TABLE().create()
+			ret_func = function(*args, **kwargs)
 		lock.release()
 		return ret_func
+	return wrapper
+
+
+def convert_to_list(function):
+	def wrapper(*args, **kwargs):
+		array_tuples = function(*args, **kwargs)
+		return list(map(lambda x: x[0] , array_tuples))
 	return wrapper
 
 
 class SELECT:
 
 	@lock_sql
-	def user_ids(self, title = False):
-		if title:
-			return cursor.execute(f"SELECT id, profile FROM telegram WHERE title = ?", (title,)).fetchall()
-		return cursor.execute(f"SELECT id FROM telegram").fetchall()
-	
+	@convert_to_list
+	def user_ids_for_spam_by_title(self, title):
+		return cursor.execute("SELECT id FROM telegram WHERE title = ? AND spamming = 1", (title,)).fetchall()
+
 	@lock_sql
 	def user_settings(self, user_id: int):
 		return cursor.execute(f"SELECT * FROM telegram WHERE id = {user_id}").fetchall()
@@ -47,6 +52,10 @@ class SELECT:
 	def all_by_tableName(self, tableName: str):
 		return cursor.execute(f"SELECT * FROM '{tableName}'").fetchall()
 
+	@lock_sql
+	@convert_to_list
+	def spam_titles(self):
+		return cursor.execute(f"SELECT title FROM YPEC WHERE spam_mode = 1").fetchall()
 
 
 
@@ -96,8 +105,11 @@ class UPDATE:
 		connection.commit()
 
 	@lock_sql
-	def spam_mode_off(self):
-		cursor.execute("UPDATE YPEC SET spam_mode = 0")
+	def spam_mode_off(self, title = False):
+		if title:
+			cursor.execute(f"UPDATE YPEC SET spam_mode = 0 WHERE title = '{title}'")
+		else:
+			cursor.execute("UPDATE YPEC SET spam_mode = 0")
 		connection.commit()
 
 	@lock_sql
@@ -114,17 +126,21 @@ class UPDATE:
 		connection.commit()
 
 	@lock_sql
-	def statistics_value(self, day: str, colomn_name: str, value):
+	def statistics_value(self, day: str, colomn_name: str, value: str):
 		cursor.execute(f"UPDATE statistics SET {colomn_name} = ? WHERE day = ?", (value, day,))
 		connection.commit()
 
+	@lock_sql
+	def last_action(self, last_action_text = 'timetable'):
+		cursor.execute(f"UPDATE telegram SET last_action = '' WHERE last_action = '{last_action_text}'")
+		connection.commit()
 
 
 
 class DELETE:
 
 	@lock_sql
-	def user(self, user_id):
+	def user(self, user_id: int):
 		cursor.execute(f"DELETE FROM telegram WHERE id = ?", (user_id,))
 		connection.commit()
 
@@ -134,16 +150,21 @@ class DELETE:
 class TABLE:
 
 	@lock_sql
-	def delete(self, tableName):
+	def delete(self, tableName: str):
 		cursor.execute("DROP TABLE IF EXISTS ?", tableName)
 		connection.commit()
 
-	def create(self, tableName):
+	def create(self, tableName = None):
 		if tableName == 'telegram':
 			self.telegram()
 		elif tableName == 'YPEC':
 			self.YPEC()
 		elif tableName == 'statistics':
+			self.statistics()
+
+		else:
+			self.telegram()
+			self.YPEC()
 			self.statistics()
 
 	def telegram(self):
@@ -160,7 +181,7 @@ class TABLE:
             joined             DATE,
             bans			   INT     DEFAULT (0),
             timeout_ban		   INT     DEFAULT (0),
-            last_action		   INT     DEFAULT (),
+            last_action		   TEXT     DEFAULT (''),
             last_message_id	   INT     DEFAULT (0),
             message_id_from_bot INT     DEFAULT (0))""")
 		connection.commit()
@@ -180,20 +201,21 @@ class TABLE:
 			day                       DATE PRIMARY KEY,
 		    update_time               DATE,
 		    requests        		  INT  DEFAULT (0),
-		    new_users       		  INT  DEFAULT (0)""")
+		    new_users       		  INT  DEFAULT (0))""")
 		connection.commit()
 
 
 
 
-def CONNECT(new_connection, new_cursor):
+def CONNECT(sql_database_file: str):
 	global lock
 	global connection
 	global cursor
 
+	with sqlite3.connect(sql_database_file, check_same_thread=False) as connection:
+		cursor = connection.cursor()
+
 	lock = threading.Lock()
-	connection = new_connection
-	cursor = new_cursor
 
 	return SELECT(), INSERT(), INSERT_REPLACE(), UPDATE(), DELETE(), TABLE()
 
