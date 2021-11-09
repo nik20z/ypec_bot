@@ -1,30 +1,29 @@
-import json
-import time
 import datetime
-import sqlite3
 import os
+import requests
 import threading
+import time
 
 import numpy as np
 
-from pprint import pprint
 from loguru import logger
+from pprint import pprint
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
-from aiogram.utils.exceptions import MessageCantBeDeleted, MessageToDeleteNotFound
-
+from aiogram.utils.exceptions import MessageCantBeDeleted, MessageToDeleteNotFound, TerminatedByOtherGetUpdates
 
 from config import start_time, stop_time, upd_new_timetable, upd_current_timetable
 from config import sql_database_file, history_message_file, log_file, debug_log_file, exception_log_file
+from config import groups_timetables_file, teachers_timetables_file
 
 from sql.query import CONNECT
-from parse.ypec import UPDATE_RASP
+
+from parse.ypec import UPDATE_TIMETABLES, ALL_TIMETABLES
 
 from telegram.config import TOKEN, BOT_ID, GOD_ID, ADMINS, ANSWER_TEXT, ANSWER_CALLBACK, TIMEOUTS
 from telegram.keyboards import KEYBOARD
-#from telegram.tg import TELEGRAM
 
 from functions import *
 
@@ -32,11 +31,108 @@ from functions import *
 
 RUN = True
 directory = os.getcwd()
-all_files = [sql_database_file, history_message_file, log_file, debug_log_file, exception_log_file]
-[sql_database_file, history_message_file, log_file, debug_log_file, exception_log_file] = [directory + file for file in all_files]
+all_files = [sql_database_file, history_message_file, log_file, debug_log_file, exception_log_file, groups_timetables_file, teachers_timetables_file]
+[sql_database_file, history_message_file, log_file, debug_log_file, exception_log_file, groups_timetables_file, teachers_timetables_file] = [directory + file for file in all_files]
 
 D = {}
 all_timetables = {}
+
+
+
+def request_send_message(session, user_id, answer):
+	return session.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={user_id}&text={answer}&parse_mode={'HTML'}", headers={'Connection':'close'}).json()
+
+
+def request_pin_chat_message(session, user_id, message_id):
+	return session.post(f"https://api.telegram.org/bot{TOKEN}/pinChatMessage?chat_id={user_id}&message_id={message_id}", headers={'Connection':'close'}).json()
+
+
+
+
+
+def get_user_info(user_id: int):
+	settings = SELECT.user_settings(user_id)
+	if settings == []:
+		return False
+	return dict(zip(colomn_names_telegram, settings[0]))
+
+
+def create_user_d(user_id: int):
+	if user_id not in D:
+	    D[user_id] = {'messages': {}, 
+	    			'times_messages': [],
+	    			'warning_block': False}
+	
+
+def chat_history(user_id: int, message_id: int, action: str, answer: str, message_id_from_bot: int, message_time: int):
+    create_user_d(user_id)
+
+    UPDATE.user_chat_history(user_id, (action, message_id, message_id_from_bot))
+
+    D[user_id]['messages'][message_id] = {'action': action, 
+											'answer': answer, 
+											'message_id_from_bot': message_id_from_bot, 
+											'time': message_time}
+
+
+
+
+class SPAM:
+
+	def __init__(self, all_timetables: dict):
+		self.all_timetables = all_timetables
+		self.spam_titles = SELECT.spam_titles()
+
+	def start(self):
+		session = requests.Session()
+		request_send_message(session, GOD_ID, f"Рассылка расписания")
+		t = time.perf_counter()
+		count_message = 0
+
+		for title in self.spam_titles:
+			user_ids_for_spam = SELECT.user_ids_for_spam_by_title(title)
+			for user_id in user_ids_for_spam:
+				inf = get_user_info(user_id)
+				user_name = inf['name']
+
+				answer = get_timetable(self.all_timetables, inf)
+
+				message_event_item = request_send_message(session, user_id, answer)
+
+				if not message_event_item['ok']:
+					request_send_message(session, GOD_ID, f"Пользователь <a href='tg://user?id={user_id}'>{user_name}</a> заблочил бота")
+					DELETE.user(user_id)
+					continue
+
+				result = message_event_item['result']
+				message_id_from_bot = result['message_id']
+				message_time = result['date']
+
+				if inf['pin_spam_timetable']: # если в настройках активирована функция закрепа
+					pin_message_item = request_pin_chat_message(user_id, message_id_from_bot)
+					if not pin_message_item['ok']:
+						logger.info(f"Не удалось закрепить сообщение, отправленное пользователю {user_name} ({user_id})")
+
+				count_message += 1
+
+				chat_history(user_id, message_id_from_bot, 'timetable', answer, message_id_from_bot, message_time)
+
+
+				logger.info(f"Пользователь {user_name} ({user_id}) получил расписание |{title}|")
+
+			UPDATE.spam_mode_off(title=title)
+
+		if count_message != 0:
+			UPDATE.spam_mode_off()
+
+			time_spamming = round(time.perf_counter() - t, 2)
+			log_message = f"Отправлено {count_message} сообщений за {time_spamming}\n"
+			logger.info(log_message)
+			
+			request_send_message(session, GOD_ID, log_message)
+
+		#session.close()
+
 
 
 
@@ -46,136 +142,42 @@ class CHECK_TIMETABLE:
 	    time.sleep(1)
 	    global RUN
 	    global today
-	    global SELECT
-	    global INSERT
-	    global INSERT_REPLACE
-	    global UPDATE
-	    global DELETE
-	    global TABLE
 
 	    global all_timetables
 	    global change_group_keyboard
 	    global change_teacher_keyboard
 
-	    global colomn_names_telegram
-
 	    while RUN:
 	        try:
-	            
-	            with sqlite3.connect(sql_database_file, check_same_thread=False) as connection:
-	                cursor = connection.cursor()
-	            [SELECT, INSERT, INSERT_REPLACE, UPDATE, DELETE, TABLE] = CONNECT(connection, cursor)
 
-	            colomn_names_telegram = SELECT.colomn_names('telegram')
-	            
-	            now = datetime.datetime.utcnow() + datetime.timedelta(hours = 3)
-	            today = datetime.datetime.strftime(now, "%d.%m.%Y")
-	            INSERT.new_statistics_day(today)
+		        time.sleep(5)
 
-	            [all_timetables, spam_titles] = UPDATE_RASP(SELECT, INSERT_REPLACE, UPDATE, self.get_database_info, now, today).start()
+		        main_all_timetables = {1: read(groups_timetables_file),
+		        						2: read(teachers_timetables_file)}
 
-	            change_group_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 1, count_colomn=3, rev=True)
-	            change_teacher_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 2, count_colomn=1)
+		        #ALL_TIMETABLES(write, groups_timetables_file, teachers_timetables_file).parse()
 
-	            #await self.start_spam(all_timetables, spam_titles)
+		        upd_timetables = UPDATE_TIMETABLES(SELECT, INSERT, INSERT_REPLACE, UPDATE, main_all_timetables, start_time, get_database_info)
 
-	            write(history_message_file, content=D)
+		        all_timetables = upd_timetables.start()
 
-	            sleep_time = self.get_time_sleep(upd_new_timetable, upd_current_timetable, start_time, stop_time)
-	            
-	            time.sleep(sleep_time)
+		        change_group_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 1, count_colomn=3, rev=True)
+		        change_teacher_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 2, count_colomn=1)
 
-	        except FileNotFoundError as e:
-	            path_file = "C:" + str(str(e).split(':')[-1][:-1])
-	            logger.debug(f"[FileNotFoundError] Отсутствует файл в директории {path_file}")
-	            write(path_file, mode="w+")
-	            continue
 
-	        except sqlite3.OperationalError as e:
-	            tableName = str(e).split(': ')[-1].strip()
-	            logger.debug(f"[TableNotFoundError] Отсутствует таблица: {tableName}")
-	            TABLE.create(tableName)
-	            CHECK_TIMETABLE()
-	            continue
+		        SPAM(all_timetables).start()
+		        #threading.Thread(target=SPAM).start()
+
+		        
+		        write(history_message_file, content=D)
+
+		        sleep_time = self.get_time_sleep(upd_new_timetable, upd_current_timetable, start_time, stop_time)
+
+		        time.sleep(sleep_time)
 
 	        except Exception as e:
 	        	logger.exception(e)
-	        	bot.send_message(chat_id=GOD_ID,
-	        					text=f"CHECK_TIMETABLE\n{str(e)}",
-	        					reply_markup=default_keyboard,
-	        					parse_mode='html'
-	        					)
 	        	continue
-
-
-	async def start_spam(self, all_timetables: dict, spam_titles: list):
-		t = time.time()
-		bot.send_message(chat_id=1020624735, text=f"Рассылка расписания\n{spam_titles}", reply_markup=default_keyboard, parse_mode='html')
-		answer_debug = "Обязательно <a href='https://vk.com/id264311526'>сообщайте</a> о всех неточностях в расписании\nБудем фиксить баги вместе" + u'\U0001F609'
-
-		count_message = 0
-		title_array_text = ''
-		user_id_array_text = ''
-		for title in spam_titles:
-			title_array_text += title + ', '
-			for user_id, profile in SELECT.user_ids(title=title):
-				inf = get_user_info(SELECT, user_id)
-				if inf['spamming']:
-					answer = self.get_timetable(all_timetables, inf)
-					user_id_array_text += str(user_id) + ', '
-					
-					try:
-						'''
-						message_event_item = bot.send_message(chat_id=user_id,
-														  text=answer,
-														  reply_markup=default_keyboard,
-														  parse_mode='html')
-						if inf['pin_spam_timetable']: # если в настройках активирована функция закрепа
-							await bot.pin_chat_message(chat_id=user_id, message_id=message_event_item.message_id)
-						'''
-						count_message += 1
-						#bot.send_message(chat_id=user_id, text=answer_debug, reply_markup=default_keyboard, parse_mode='html')
-					except Exception as e:
-						logger.exception(e)
-						if 'bot was blocked' in str(e):
-							log_text = f"Пользователь с id {user_id} заблочил бота"
-							await bot.send_message(chat_id=1020624735, text=log_text, reply_markup=default_keyboard, parse_mode='html')
-							#delete.user(user_id)
-							logger.debug(log_text)
-						continue
-		
-		if count_message != 0:
-			UPDATE.spam_mode_off()
-			
-			logger.info(f"Список групп и преподавателей: {title_array_text}")
-			logger.info(f"Список user_id {user_id_array_text}")
-
-			log_message = f"Отправлено {count_message} сообщений за {time.time()-t}\n"
-			logger.info(log_message)
-			
-			await bot.send_message(chat_id=1020624735, text=log_message, reply_markup=default_keyboard, parse_mode='html')
-			
-	
-	def get_database_info(self, SELECT):
-	    all_timetables_func = {1: {}, 2: {}}
-	    spam_titles_func = []
-	    colomn_names = SELECT.colomn_names('YPEC')
-	    for item in SELECT.timetables():
-	        d = dict(zip(colomn_names, item))
-
-	        title = d['title']
-	        timetable = d['timetable']
-	        timetable_add = d['timetable_add']
-	        time_info = d['time_info']
-	        profile = d['profile']
-	        spam_mode = d['spam_mode']
-
-	        all_timetables_func[profile][title] = [timetable, timetable_add, time_info]
-
-	        if spam_mode:
-	            spam_titles_func.append(title)
-
-	    return all_timetables_func, spam_titles_func
 
 
 	def get_time_sleep(self, upd_new_timetable: int, upd_current_timetable: int, start_time: int, stop_time: int):
@@ -185,7 +187,7 @@ class CHECK_TIMETABLE:
 		
 		count_hours = 0
 		hour = now.hour
-		count_seconds = 60 - now.second if now.second != 0 else 0
+		second = now.second 
 
 		if start_time <= hour <= stop_time - 1:
 			count_minutes = upd_current_timetable
@@ -193,15 +195,20 @@ class CHECK_TIMETABLE:
 				count_minutes = upd_new_timetable
 			sleep_time = 60*count_minutes
 		else:
-			# перезапускаем цикл в полночь
+			# перезапускаем цикл в 01:00
 			if now.weekday() == 6 or hour >= stop_time:
-				start_time = 24
+				start_time = 25 
 			count_hours = start_time - hour - 1
 			count_minutes = 60-now.minute - 1
 			
 			sleep_time = 60*(60*count_hours + count_minutes)
 		
-		sleep_time += count_seconds
+		if count_minutes == 60:
+			count_hours = 1
+			count_minutes = 0
+
+		count_seconds = 60 - second if second != 0 else 0
+		sleep_time += second
 		
 		update_through = datetime.time(count_hours, count_minutes, count_seconds)
 		logger.info(f"Следующий перезапуск цикла через {update_through}")
@@ -224,12 +231,11 @@ def decorate_handler(function):
     		name = inf['name']
     		user_id = obj['user_id']
 
-    		prob_1 = (32 - len(type_query))*' '
-    		prob_2 = (14 - len(action))*' '
+    		prob_1 = (23 - len(action))*' '
 
     		time_handler = round(time.perf_counter() - start_time, 2)
 
-    		logger.info(f"{type_query} {prob_1}|{action}{prob_2}|{message_id}| {name} |{user_id}| {time_handler}")
+    		logger.info(f"{type_query} | {action}{prob_1} |{message_id}| {name} |{user_id}| {time_handler}")
     		
     		print(f"{function.__name__} {time_handler}")
 
@@ -238,8 +244,6 @@ def decorate_handler(function):
 
     		await bot.send_message(chat_id=GOD_ID, text=f"TELEGRAM Ошибка!!!\n{str(e)}")
 
-    	
-
     return wrapper
 
 
@@ -247,9 +251,11 @@ def decorate_handler(function):
 
 class TELEGRAM:
 	def __init__(self):
+
 		@dp.callback_query_handler(lambda callback_query: True)
 		@decorate_handler
 		async def callback(call):
+		    current_action = ''
 		    settings_type = ''
 		    answer = ''
 		    keyboard = None
@@ -258,24 +264,29 @@ class TELEGRAM:
 		    message_time = int(call.message.date.timestamp())
 		    call_data = call.data
 
-		    inf = self.get_user_info(user_id)
+		    inf = get_user_info(user_id)
+
+		    if not inf: return await self.new_user(call.message)
 
 		    last_action = inf['last_action']
 		    last_message_id = inf['last_message_id']
 
 		    if message_id_from_bot != inf['message_id_from_bot']:
-		    	settings_type = 'delete_settings'
-		    	await bot.delete_message(chat_id=user_id, message_id=message_id_from_bot)
-		    	return {'type_query': f"CALLBACK {settings_type}", 
+		    	settings_type = 'delete_message'
+		    	try:
+		    		await bot.delete_message(chat_id=user_id, message_id=message_id_from_bot)
+		    	except (MessageCantBeDeleted, MessageToDeleteNotFound):
+		    		logger.debug(f"[CALLBACK] Ошибка удаления сообщения ({message_id_from_bot}) от бота у пользователя ({user_id}) \n{D[user_id]}")
+		    	return {'type_query': f"CALLBACK", 
 			    		'user_id': user_id, 
 			    		'inf': inf, 
-			    		'action': last_action,
+			    		'action': settings_type,
 			    		'message_id': last_message_id}
 		    
 		    if last_action == 'settings': # если до этого произошло взаимодействие с настройками 
 		    	[settings_type, last_action, current_action, answer, keyboard] = await self.change_settings(user_id, inf, call)
 		    	if last_action in ('start_over', 'change_profile'):
-		    		self.chat_history(user_id, 
+		    		chat_history(user_id, 
 		    							action=current_action, 
 		    							answer='', 
 		    							message_id=last_message_id, 
@@ -306,8 +317,8 @@ class TELEGRAM:
 													show_alert=False)
 		        else:
 		            UPDATE.user_info(user_id, 'title', call_data)
-		            inf = self.get_user_info(user_id)
-		            answer_after_settings = self.get_timetable(all_timetables, inf)
+		            inf = get_user_info(user_id)
+		            answer_after_settings = get_timetable(all_timetables, inf)
 		            
 		            await bot.answer_callback_query(callback_query_id=call.id,
 													text=ANSWER_CALLBACK['timetable_for'](inf['profile'], call_data),
@@ -316,14 +327,16 @@ class TELEGRAM:
 								                        text=answer_after_settings,
 								                        reply_markup=default_keyboard,
 								                        parse_mode='html')
-		            self.chat_history(user_id,
+		            chat_history(user_id,
 						            	message_id=last_message_id, 
 						            	action='timetable', 
 						            	answer=answer_after_settings, 
 						            	message_id_from_bot=bot_message.message_id, 
 						            	message_time=int(bot_message.date.timestamp()))
-		            
-		            await bot.delete_message(chat_id=user_id, message_id=message_id_from_bot)
+		            try:
+		            	await bot.delete_message(chat_id=user_id, message_id=message_id_from_bot)
+		            except (MessageCantBeDeleted, MessageToDeleteNotFound):
+		            	logger.debug(f"[CALLBACK] Ошибка удаления сообщения ({message_id}) от бота у пользователя ({user_id}) \n{D[user_id]}")
 		            await self.clear_chat(user_id, inf)
 
 		    if answer != '':
@@ -333,7 +346,7 @@ class TELEGRAM:
 											text=answer,
 											reply_markup=keyboard,
 											parse_mode='html')
-		        self.chat_history(user_id, 
+		        chat_history(user_id, 
 		        					message_id=last_message_id,
 		        					action=current_action, 
 		        					answer=answer, 
@@ -341,12 +354,11 @@ class TELEGRAM:
 		        					message_time=message_time)
 		    
 		    #write(history_message_file, content=D)
-		    return {'type_query': f"CALLBACK {settings_type}", 
+		    return {'type_query': f"CALLBACK", 
 		    		'user_id': user_id, 
 		    		'inf': inf, 
-		    		'action': last_action,
+		    		'action': current_action,
 		    		'message_id': last_message_id}
-	
 		
 
 		@dp.message_handler()
@@ -357,11 +369,11 @@ class TELEGRAM:
 
 			user_id = message.chat.id
 
-			if (user_id,) not in SELECT.user_ids(): return await self.new_user(message)
+			inf = get_user_info(user_id)
 
-			self.create_user_d(user_id)
+			if not inf: return await self.new_user(message)
 
-			inf = self.get_user_info(user_id)
+			create_user_d(user_id)
 
 			message_id = message.message_id
 			message_time = int(message.date.timestamp())
@@ -390,7 +402,7 @@ class TELEGRAM:
 
 			# РАСПИСАНИЕ
 			elif current_action == 'timetable':
-				answer = self.get_timetable(all_timetables, inf)
+				answer = get_timetable(all_timetables, inf)
 				if answer == None:
 					current_action = 'change_profile'
 					[answer, keyboard] = self.answer_by_profile_change(inf['profile'])
@@ -409,7 +421,7 @@ class TELEGRAM:
 													text=answer,
 													reply_markup=keyboard,
 													parse_mode='html')
-				self.chat_history(user_id, 
+				chat_history(user_id, 
 									message_id=message_id,
 									action=current_action, 
 									answer=answer,
@@ -422,28 +434,7 @@ class TELEGRAM:
 			return obj
 
 	
-	def create_user_d(self, user_id: int):
-		if user_id not in D:
-		    D[user_id] = {'messages': {}, 
-		    			'last_action': '',
-		    			'last_message_id': 0,
-		    			'message_id_from_bot': 0,
-		    			'times_messages': [],
-		    			'warning_block': False}
 
-	
-	#@time_of_function
-	def chat_history(self, user_id: int, message_id: int, action: str, answer: str, message_id_from_bot: int, message_time: int):
-	    self.create_user_d(user_id)
-
-	    UPDATE.user_chat_history(user_id, (action, message_id, message_id_from_bot))
-
-	    D[user_id]['messages'][message_id] = {'action': action, 
-												'answer': answer, 
-												'message_id_from_bot': message_id_from_bot, 
-												'time': message_time}
-
-	
 	async def new_user(self, response, local_time = 10800): # local_time - прибавляем 3 часа
 	    user_id = response.chat.id
 	    message_id = response.message_id
@@ -462,7 +453,7 @@ class TELEGRAM:
 
 	    bot_message = await bot.send_message(user_id, answer, reply_markup=change_profile_keyboard, parse_mode='html')
 
-	    self.chat_history(user_id, 
+	    chat_history(user_id, 
 	    					action='change_profile', 
 	    					answer=answer, 
 	    					message_id=message_id, 
@@ -470,32 +461,25 @@ class TELEGRAM:
 	    					message_time=message_time)
 
 	    logger.info(f"[NEW_USER] Появился новый пользователь {name} ({user_id})")
-	    return {'type_query': 'TEXT' + ' '*28, 
+	    return {'type_query': 'TEXT' + ' '*4, 
 		    	'user_id': user_id, 
-		    	'inf': self.get_user_info(user_id), 
+		    	'inf': get_user_info(user_id), 
 		    	'action': 'new_user',
 		    	'message_id': message_id}
 
-	
-	def get_user_info(self, user_id: int):
-		settings = SELECT.user_settings(user_id)
-		if settings != []:
-			return dict(zip(colomn_names_telegram, settings[0]))
-		return {}
 
-	
 	def get_current_action(self, inf: dict, message_lower: str):
-	    if message_lower in ('/settings', 'настройки', "s"):
-	        return 'settings'
-	    if inf['profile'] == None or message_lower in ('/start', '/change_profile'):
-	        return 'change_profile'
-	    if inf['title'] == None or message_lower == '/change':
-	        return 'change'
-	    if message_lower in ("расписание", "расп", "/timetable", "r"):
-	        return 'timetable'
-	    if message_lower == '/help':
-	    	return 'help'
-	    return 'warning'
+		if message_lower == '/help':
+			return 'help'
+		if message_lower in ('/settings', 'настройки', "s"):
+			return 'settings'
+		if inf['profile'] == None or message_lower in ('/start', '/change_profile'):
+			return 'change_profile'
+		if inf['title'] == None or message_lower == '/change':
+			return 'change'
+		if message_lower in ("расписание", "расп", "/timetable", "r"):
+			return 'timetable'
+		return 'warning'
 
 
 	def get_value_mean_ban(self, user_id: int, message_time: int, value_mean_ban = 2, offset_check = 4):
@@ -520,11 +504,10 @@ class TELEGRAM:
 			last_mes_time = mes_time
 
 		mean = np.mean(difference_array)
-		print('difference_array', difference_array, mean)
+		#print('difference_array', difference_array, mean)
 		return mean
 
 
-	#@time_of_function
 	async def anti_spam(self, user_id: int, inf: dict, message_id: int, last_action: str, current_action: str, message_time: int):
 		def get_timeout(bans):
 			try:
@@ -532,20 +515,20 @@ class TELEGRAM:
 			except KeyError:
 				return [126230400, 'весь период обучения']
 
-		obj = {'type_query': 'TEXT' + ' '*28, 
+		obj = {'type_query': 'TEXT' + ' '*4, 
 		    	'user_id': user_id, 
 		    	'inf': inf, 
 		    	'action': current_action,
 		    	'message_id': message_id}
 
-		inf = self.get_user_info(user_id)
+		inf = get_user_info(user_id)
 		last_message_id = inf['last_message_id']
 		message_id_from_bot = inf['message_id_from_bot']
 		bans = inf['bans']
 		# если id текущего сообщения меньше id прошлого сообщения, отправленного ботом
-		if message_id < message_id_from_bot:
-			obj['action'] = 'spam'
-			return obj
+		#if message_id < message_id_from_bot:
+			#obj['action'] = 'spam'
+			#return obj
 
 		# если человек забанен и время для разблокировки не пришло
 		if bans and inf['timeout_ban'] > message_time:
@@ -608,12 +591,22 @@ class TELEGRAM:
 		# ОБРАБОТКА КОМАНД АДМИНИСТРАТОРОВ
 		if user_id in ADMINS:
 			answer_for_admin = ''
-			if message_lower == 'stat':
+
+			
+
+
+			if message_lower == '/commands':
+				answer_for_admin = 'Ниже представлены команды администратора'
+
+			
+
+
+			elif message_lower == 'stat':
 				answer_for_admin = self.get_stat()
 
-			elif message_lower == 'stop bot':
+			elif message_lower == 'bot stop':
 				RUN = False
-				answer_for_admin = "Bot was stopped!"
+				raise Exception('BOT STOP')
 
 			elif 'get ' in message_lower:
 				command_get = message_lower.split()[-1]
@@ -632,32 +625,8 @@ class TELEGRAM:
 				await bot.send_message(chat_id=user_id,
 	                            text=answer_for_admin,
 	                            reply_markup=default_keyboard)
-				self.chat_history(user_id, last_action, '', message_id, 0, message_time)
+				chat_history(user_id, last_action, '', message_id, 0, message_time)
 				return True
-
-
-	#@time_of_function
-	def get_timetable(self, all_timetables: dict, inf: dict):
-		title = inf['title']
-		view_title = inf['view_title']
-		view_add_info = inf['view_add']
-		view_time_info = inf['view_time']
-
-		try:
-			answer_array = all_timetables[inf['profile']][title]
-		except KeyError:
-			return None
-
-		answer = answer_array[0] # дефолтное расписание
-		if view_add_info: # отображение дополнительной информации
-			answer = answer_array[1]			
-		
-		if view_title:
-			answer = f"<b>{title}</b>\n{answer}"
-		if view_time_info: # показывать время начала и конца пар
-			answer += str(answer_array[2])
-
-		return answer
 
 	
 	def answer_by_profile_change(self, profile: int):
@@ -668,7 +637,6 @@ class TELEGRAM:
 		return ANSWER_TEXT['change_profile'], change_profile_keyboard
 
 
-	#@time_of_function
 	async def clear_chat(self, user_id: int, inf: dict):
 	    last_message_id = 0
 
@@ -721,7 +689,6 @@ class TELEGRAM:
 		return False
 
 
-
 	async def change_settings(self, user_id: int, inf: dict, call: dict):
 		[last_action, current_action, answer, keyboard] = ['', 'settings', '', '']
 		settings_type = call.data
@@ -762,12 +729,26 @@ class TELEGRAM:
 def main():
 	time.sleep(1)
 	while RUN:
-		global bot
-		global dp
+		global SELECT
+		global INSERT
+		global INSERT_REPLACE
+		global UPDATE
+		global DELETE
+		global TABLE
+
+		global colomn_names_telegram
+
 		global D
+		global all_timetables
+
+		global bot
+		global dp		
+
 		global default_keyboard
 		global change_profile_keyboard
 		global support_keyboard
+		global change_group_keyboard
+		global change_teacher_keyboard
 
 		logger.add(log_file, 
 					format="[{time:%H:%M:%S}] {level} {message} {exception}",
@@ -775,27 +756,44 @@ def main():
 					rotation="1 day",
 					compression="zip")
 
-		logger.info('START main')
+		logger.info('START WORKING')
 
-		D = read_history_message(history_message_file)
-		D = {}
+		[SELECT, INSERT, INSERT_REPLACE, UPDATE, DELETE, TABLE] = CONNECT(sql_database_file)
 
+		colomn_names_telegram = SELECT.colomn_names('telegram')
+
+		D = read_with_keyint(history_message_file)
+		all_timetables = get_database_info(SELECT)
+
+		
 		bot = Bot(token=TOKEN)
 		dp = Dispatcher(bot)
 
+		
 		default_keyboard = KEYBOARD().default()
 		change_profile_keyboard = KEYBOARD(type_='inline').change_profile()
 		support_keyboard = KEYBOARD(type_='inline').support()
 
-		threading.Thread(target=CHECK_TIMETABLE, daemon=True).start()
+		change_group_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 1, count_colomn=3, rev=True)
+		change_teacher_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 2, count_colomn=1)
+
+		threading.Thread(target=CHECK_TIMETABLE).start()
 
 		time.sleep(5)
 
 		try:
 			TELEGRAM()
-		except sqlite3.OperationalError:
-			TABLE.create('telegram')
-			main()
+
+		except TerminatedByOtherGetUpdates as e:
+			logger.exception(e)
+			bot.send_message(chat_id=GOD_ID,
+	        					text=f"ЗАПУЩЕН ВТОРОЙ ЭКЗЕМПЛЯР БОТА!!!",
+	        					reply_markup=default_keyboard,
+	        					parse_mode='html'
+	        					)
+			break
+
+		'''
 		except Exception as e:
 			logger.exception(e)
 			bot.send_message(chat_id=GOD_ID,
@@ -803,7 +801,12 @@ def main():
 	        					reply_markup=default_keyboard,
 	        					parse_mode='html'
 	        					)
+			if str(e) == 'BOT STOP':
+				raise Exception
+			
 			continue
+			time.sleep(10)
+		'''
 
 		executor.start_polling(dp)
 
