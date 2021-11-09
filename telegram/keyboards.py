@@ -95,8 +95,6 @@ class KEYBOARD:
 		for parameter in settings_buttons:
 			condition = '✅' if inf[parameter] else '☑'
 			text = ANSWER_KEYBOARD[parameter]
-			if parameter == 'spamming' and not inf['spamming']:
-				text = ANSWER_KEYBOARD['not_spamming']
 
 			button_parameter_info = BUTTON(text).inline(f"{parameter} info")
 			button_condition = BUTTON(condition).inline(parameter)
