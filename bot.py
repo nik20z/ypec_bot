@@ -36,15 +36,18 @@ all_files = [sql_database_file, history_message_file, log_file, debug_log_file, 
 
 D = {}
 all_timetables = {}
+all_weekday_timetables = {}
 
 
 
 def request_send_message(session, user_id, answer):
-	return session.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={user_id}&text={answer}&parse_mode={'HTML'}", headers={'Connection':'close'}).json()
+	data = {'chat_id': user_id, 'text': answer, 'parse_mode': 'HTML'}
+	return session.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", data=data).json()
 
 
 def request_pin_chat_message(session, user_id, message_id):
-	return session.post(f"https://api.telegram.org/bot{TOKEN}/pinChatMessage?chat_id={user_id}&message_id={message_id}", headers={'Connection':'close'}).json()
+	data = {'chat_id': user_id, 'message_id': message_id}
+	return session.post(f"https://api.telegram.org/bot{TOKEN}/pinChatMessage", data=data).json()
 
 
 
@@ -86,6 +89,9 @@ class SPAM:
 	def start(self):
 		session = requests.Session()
 		request_send_message(session, GOD_ID, f"Рассылка расписания")
+		
+		time.sleep(5)
+
 		t = time.perf_counter()
 		count_message = 0
 
@@ -100,7 +106,7 @@ class SPAM:
 				message_event_item = request_send_message(session, user_id, answer)
 
 				if not message_event_item['ok']:
-					request_send_message(session, GOD_ID, f"Пользователь <a href='tg://user?id={user_id}'>{user_name}</a> заблочил бота")
+					request_send_message(session, GOD_ID, f"<a href='tg://user?id={user_id}'>{'Пользователь'}</a> {user_name} заблочил бота")
 					DELETE.user(user_id)
 					continue
 
@@ -109,7 +115,7 @@ class SPAM:
 				message_time = result['date']
 
 				if inf['pin_spam_timetable']: # если в настройках активирована функция закрепа
-					pin_message_item = request_pin_chat_message(user_id, message_id_from_bot)
+					pin_message_item = request_pin_chat_message(session, user_id, message_id_from_bot)
 					if not pin_message_item['ok']:
 						logger.info(f"Не удалось закрепить сообщение, отправленное пользователю {user_name} ({user_id})")
 
@@ -197,7 +203,7 @@ class CHECK_TIMETABLE:
 		else:
 			# перезапускаем цикл в 01:00
 			if now.weekday() == 6 or hour >= stop_time:
-				start_time = 25 
+				start_time = 24
 			count_hours = start_time - hour - 1
 			count_minutes = 60-now.minute - 1
 			
@@ -275,7 +281,7 @@ class TELEGRAM:
 		    	settings_type = 'delete_message'
 		    	try:
 		    		await bot.delete_message(chat_id=user_id, message_id=message_id_from_bot)
-		    	except (MessageCantBeDeleted, MessageToDeleteNotFound):
+		    	except (MessageCantBeDeleted, MessageToDeleteNotFound) as e:
 		    		logger.debug(f"[CALLBACK] Ошибка удаления сообщения ({message_id_from_bot}) от бота у пользователя ({user_id}) \n{D[user_id]}")
 		    	return {'type_query': f"CALLBACK", 
 			    		'user_id': user_id, 
@@ -335,7 +341,7 @@ class TELEGRAM:
 						            	message_time=int(bot_message.date.timestamp()))
 		            try:
 		            	await bot.delete_message(chat_id=user_id, message_id=message_id_from_bot)
-		            except (MessageCantBeDeleted, MessageToDeleteNotFound):
+		            except (MessageCantBeDeleted, MessageToDeleteNotFound) as e:
 		            	logger.debug(f"[CALLBACK] Ошибка удаления сообщения ({message_id}) от бота у пользователя ({user_id}) \n{D[user_id]}")
 		            await self.clear_chat(user_id, inf)
 
@@ -412,9 +418,9 @@ class TELEGRAM:
 			elif current_action == 'help':
 				answer, keyboard = ANSWER_TEXT['help'], support_keyboard
 
-			elif current_action == 'warning':
+			elif current_action == 'other':
 				if user_id not in ADMINS:
-					answer = ANSWER_TEXT['warning']
+					answer = ANSWER_TEXT['other']
 
 			if answer != "" and current_action != "":
 				bot_message = await bot.send_message(chat_id=user_id,
@@ -479,7 +485,9 @@ class TELEGRAM:
 			return 'change'
 		if message_lower in ("расписание", "расп", "/timetable", "r"):
 			return 'timetable'
-		return 'warning'
+		#if message_lower in ("/weekday_timetable", "Распиание на неделю"):
+			#return "weekday_timetable"
+		return 'other'
 
 
 	def get_value_mean_ban(self, user_id: int, message_time: int, value_mean_ban = 2, offset_check = 4):
@@ -662,11 +670,11 @@ class TELEGRAM:
         			await bot.delete_message(chat_id=user_id, message_id=last_message_id)
         				
 	        	except MessageToDeleteNotFound:
-	        		logger.debug(f"[CLEAR_CHAT_PRIVACY] Сообщение ({last_message_id}, {message_id_from_bot}) в приватном чате ({user_id}) уже удалено \n{D[user_id]}")
+	        		logger.debug(f"[CLEAR_CHAT_PRIVACY] Сообщение ({last_message_id}, {message_id_from_bot}) в приватном чате ({user_id}) уже удалено")
 	        	except MessageCantBeDeleted:
-	        		logger.debug(f"[CLEAR_CHAT_GROUP] Сообщение ({last_message_id}, {message_id_from_bot}) в беседе ({user_id}) нельзя удалить \n{D[user_id]}")
+	        		logger.debug(f"[CLEAR_CHAT_GROUP] Сообщение ({last_message_id}, {message_id_from_bot}) в беседе ({user_id}) нельзя удалить")
 	        	except KeyError:
-	        		logger.debug(f"[CLEAR_CHAT] Сообщение ({last_message_id}, {message_id_from_bot}) ({user_id}) отсутствует в истории сообщений пользователя \n{D[user_id]}")
+	        		logger.debug(f"[CLEAR_CHAT] Сообщение ({last_message_id}, {message_id_from_bot}) ({user_id}) отсутствует в истории сообщений пользователя")
 	        	
 	        	await self.clear_chat(user_id, inf)
 
@@ -773,17 +781,17 @@ def main():
 		default_keyboard = KEYBOARD().default()
 		change_profile_keyboard = KEYBOARD(type_='inline').change_profile()
 		support_keyboard = KEYBOARD(type_='inline').support()
-
 		change_group_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 1, count_colomn=3, rev=True)
 		change_teacher_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 2, count_colomn=1)
 
+		
 		threading.Thread(target=CHECK_TIMETABLE).start()
 
+		
 		time.sleep(5)
 
 		try:
 			TELEGRAM()
-
 		except TerminatedByOtherGetUpdates as e:
 			logger.exception(e)
 			bot.send_message(chat_id=GOD_ID,
@@ -793,21 +801,7 @@ def main():
 	        					)
 			break
 
-		'''
-		except Exception as e:
-			logger.exception(e)
-			bot.send_message(chat_id=GOD_ID,
-	        					text=f"main\n{str(e)}",
-	        					reply_markup=default_keyboard,
-	        					parse_mode='html'
-	        					)
-			if str(e) == 'BOT STOP':
-				raise Exception
-			
-			continue
-			time.sleep(10)
-		'''
-
+		
 		executor.start_polling(dp)
 
 
