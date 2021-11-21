@@ -40,7 +40,7 @@ all_files = [sql_database_file, history_message_file, log_file, debug_log_file, 
 logger.add(log_file, 
 			format="[{time:%H:%M:%S}] {level} {message} {exception}",
 			level="DEBUG",  
-			rotation="1 day",
+			rotation="00:00",
 			compression="zip")
 
 logger.info('START WORKING')
