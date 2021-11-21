@@ -107,8 +107,6 @@ class SPAM:
 		self.count_message = 0
 
 	def start(self):
-		print(self.spam_titles)
-
 		session = requests.Session()
 		post_request = POST_REQUEST(TOKEN, session)
 
@@ -216,7 +214,7 @@ def decorate_handler(function):
 
     		logger.info(f"{type_query} | {action}{prob_1} |{message_id}| {name} |{user_id}| {time_handler}")
     		
-    		print(f"{function.__name__} {time_handler}")
+    		#print(f"{function.__name__} {time_handler}")
 
     	except Exception as e:
     		await bot.send_message(chat_id=GOD_ID, text=f"TELEGRAM Ошибка!!!\n{str(e)}")
@@ -498,7 +496,6 @@ def get_value_mean_ban(user_id: int, message_time: int, value_mean_ban = 2, offs
 		last_mes_time = mes_time
 
 	mean = np.mean(difference_array)
-	#print('difference_array', difference_array, mean)
 	return mean
 
 
@@ -554,9 +551,7 @@ async def anti_spam(user_id: int, inf: dict, message_id: int, last_action: str, 
 			D[user_id]['warning_block'] = False
 			[timeout_offset, timeout_text] = get_timeout(bans)
 
-
-			#UPDATE.user_ban(user_id, bans, message_time + timeout_offset)
-
+			UPDATE.user_ban(user_id, bans, message_time + timeout_offset)
 			
 			warning_about_timeout = ANSWER_TEXT['warning_about_timeout'](bans)
 			block_text = ANSWER_TEXT['blocking'](timeout_text, warning_about_timeout)
@@ -590,9 +585,8 @@ async def check_command_from_admin(user_id: int, message_lower: str):
 
 		
 
-
 		if message_lower == '/commands':
-			answer_for_admin = 'Ниже представлены команды администратора'
+			answer_for_admin = 'Ниже представлены команды администратора:'
 
 
 		elif 'get user link' in message_lower:
