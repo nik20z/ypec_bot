@@ -71,6 +71,8 @@ def write(file_name, content=False, mode = "w"):
 		f.write(content)
 		f.close()
 
+	return content
+
 
 def read(file_name, mode = "r"):
 	ext = file_name.split('.')[-1]
@@ -110,3 +112,56 @@ def time_of_function(function):
         print(f"{function.__name__} {(time.perf_counter_ns() - start_time)/10**9}")
         return res
     return wrapped
+
+
+
+def get_time_sleep(SELECT, upd_new_timetable: int, upd_current_timetable: int, start_time: int, stop_time: int):
+	now = datetime.datetime.utcnow() + datetime.timedelta(hours = 3)
+	today = datetime.datetime.strftime(now, "%d.%m.%Y")
+	update_time_from_table = SELECT.update_time_by_day(today)
+	
+	count_hours = 0
+	hour = now.hour
+	second = now.second 
+
+	if start_time <= hour <= stop_time - 1:
+		count_minutes = upd_current_timetable
+		if (None,) in update_time_from_table:
+			count_minutes = upd_new_timetable
+		sleep_time = 60*count_minutes
+	else:
+		# перезапускаем цикл в 00:00
+		if now.weekday() == 6 or hour >= stop_time:
+			start_time = 24
+		count_hours = start_time - hour - 1
+		count_minutes = 60-now.minute - 1
+		
+		sleep_time = 60*(60*count_hours + count_minutes)
+	
+	if count_minutes == 60:
+		count_hours = 1
+		count_minutes = 0
+
+	count_seconds = 60 - second if second != 0 else 0
+	sleep_time += count_seconds
+	
+	update_through = datetime.time(count_hours, count_minutes, count_seconds)
+	
+	return sleep_time, update_through
+
+
+class POST_REQUEST:
+	def __init__(self, TOKEN, session):
+		self.TOKEN = TOKEN
+		self.session = session
+	
+	def send_message(self, user_id, answer):
+		data = {'chat_id': user_id, 'text': answer, 'parse_mode': 'HTML'}
+		return self.session.post(f"https://api.telegram.org/bot{self.TOKEN}/sendMessage", data=data).json()
+
+
+	def pin_chat_message(self, user_id, message_id):
+		data = {'chat_id': user_id, 'message_id': message_id}
+		return self.session.post(f"https://api.telegram.org/bot{self.TOKEN}/pinChatMessage", data=data).json()
+
+

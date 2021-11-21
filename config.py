@@ -7,8 +7,10 @@ exception_log_file = '/log/exception.log'
 groups_timetables_file = '/parse/groups.json'
 teachers_timetables_file = '/parse/teachers.json'
 
+call_schedule_file = '/telegram/call_schedule.png'
+
 start_time = 10 # hours
 stop_time = 15 # hours
 upd_new_timetable = 15 # minutes
-upd_current_timetable = 60 # minutes
+upd_current_timetable = 30 # minutes
 
