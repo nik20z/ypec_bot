@@ -659,7 +659,7 @@ class UPDATE_TIMETABLES:
                     #self.UPDATE.last_action()
                 
                 # в полночь просто обновляем дату и тд, распсиание не трогаем
-                if 0 <= self.now.hour < self.start_time or self.now.hour == 23
+                if 0 <= self.now.hour < self.start_time or self.now.hour == 23:
                     return self.get_database_info(self.SELECT)
 
             # иначе если замены есть, и распсиание ещё не обновлялось
