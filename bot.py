@@ -172,16 +172,18 @@ def check_timetable():
 
 	while RUN:
 
+		time.sleep(1)
+		
 		logger.info("CHECK_TIMETABLE")
 
-		upd_timetables = UPDATE_TIMETABLES(SELECT, INSERT, INSERT_REPLACE, UPDATE, main_all_timetables, start_time, get_database_info)
+		#upd_timetables = UPDATE_TIMETABLES(SELECT, INSERT, INSERT_REPLACE, UPDATE, main_all_timetables, start_time, get_database_info)
 
-		all_timetables = upd_timetables.start()
+		#all_timetables = upd_timetables.start()
 
 		change_group_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 1, count_colomn=3, rev=True)
 		change_teacher_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 2, count_colomn=1)
 
-		SPAM(all_timetables).start()
+		#SPAM(all_timetables).start()
 		#threading.Thread(target=SPAM).start()
 
 		write(history_message_file, content=D)
