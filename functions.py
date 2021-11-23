@@ -117,37 +117,26 @@ def time_of_function(function):
 
 def get_time_sleep(SELECT, upd_new_timetable: int, upd_current_timetable: int, start_time: int, stop_time: int):
 	now = datetime.datetime.utcnow() + datetime.timedelta(hours = 3)
-	today = datetime.datetime.strftime(now, "%d.%m.%Y")
-	update_time_from_table = SELECT.update_time_by_day(today)
 	
-	count_hours = 0
-	hour = now.hour
-	second = now.second 
+	if start_time <= now.hour < stop_time and now.weekday() != 6:
+		today = datetime.datetime.strftime(now, "%d.%m.%Y")
+		update_time_from_table = SELECT.update_time_by_day(today)
 
-	if start_time <= hour <= stop_time - 1:
-		count_minutes = upd_current_timetable
+		count_seconds = upd_current_timetable*60
 		if (None,) in update_time_from_table:
-			count_minutes = upd_new_timetable
-		sleep_time = 60*count_minutes
+			count_seconds = upd_new_timetable*60
 	else:
-		# перезапускаем цикл в 00:00
-		if now.weekday() == 6 or hour >= stop_time:
-			start_time = 24
-		count_hours = start_time - hour - 1
-		count_minutes = 60-now.minute - 1
-		
-		sleep_time = 60*(60*count_hours + count_minutes)
-	
-	if count_minutes == 60:
-		count_hours = 1
-		count_minutes = 0
+		tomorrow_date = now.date() + datetime.timedelta(days=1)
+		tomorrow = datetime.datetime.combine(tomorrow_date, datetime.time.min)
+		delta = tomorrow - now
+		count_seconds = delta.seconds
 
-	count_seconds = 60 - second if second != 0 else 0
-	sleep_time += count_seconds
+	update_through = datetime.timedelta(seconds=count_seconds + 1)
+
+	return count_seconds + 1, update_through 
+
 	
-	update_through = datetime.time(count_hours, count_minutes, count_seconds)
 	
-	return sleep_time, update_through
 
 
 class POST_REQUEST:
