@@ -18,7 +18,7 @@ from parse.config import url_zmnext, url_rasp_s, url_rasp_sp
 def get_dict_from_select(url: str, check = False):
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
-    time.sleep(2)
+    time.sleep(1)
     try:
         return {i['value']: check_dots(i.text, check) for i in soup.find('select').find_all('option') if i.text not in ('', ' ')}
     except AttributeError:
@@ -57,7 +57,8 @@ class TITLE:
                                 'M': 'М',
                                 'O': 'О',
                                 'P': 'Р',
-                                'T': 'Т'}
+                                'T': 'Т',
+                                'V': 'В'}
         self.profile = profile
         self.title = title
         self.array_check = list(array_check)
@@ -163,6 +164,8 @@ class TIMETABLE:
             rows = table.find_all('tr')[1:]
         except AttributeError:
             logger.debug(f"Не удаётся найти строки в таблице для {self.id_}")
+            time.sleep(5)
+            self.parse_table()
 
         for row in rows:
             self.elements = row.find_all('td')
@@ -181,10 +184,11 @@ class TIMETABLE:
             self.lesson.insert(0, type_lesson)
 
             if self.profile == 1:
-                self.lesson[-2] = TITLE(2, self.lesson[-2], self.teachers_array).get()
+                teachers_split = self.lesson[-2].split('/')
+                self.lesson[-2] = [TITLE(2, teacher, self.teachers_array).get() for teacher in teachers_split]
 
             elif self.profile == 2:
-                title_name = TITLE(1, self.lesson[1], self.groups_array).get()
+                title_name = [TITLE(1, self.lesson[1], self.groups_array).get()]
                 del self.lesson[1]
                 self.lesson.insert(-1, title_name)
 
@@ -239,9 +243,10 @@ class ALL_TIMETABLES:
             path_to_file = val[1]
             titles_array = val[-1]
             for id_, title in titles_array.items():
+
                 logger.info(f"Парсим основное расписание для {title}")
                 self.MainTimetables[profile][title] = TIMETABLE(session, profile, url, id_, self.groups, self.teachers).parse_table()
-            
+
             logger.info(f"Записываем в файл расписание для профиля {profile}") 
             self.write(path_to_file, content=self.MainTimetables[profile])
 
@@ -277,6 +282,20 @@ class REPLACEMENTS:
         if ', ' in teacher_replacements:
             teacher_split = teacher_replacements.split(', ')
         return teacher_split
+
+    def split_num_lessons(self, replacements_iterate: dict):
+        def add_num_les(old_num, new_num):
+            replacements[str(new_num)] = replacements_iterate[old_num]
+        
+        replacements = {}
+        for num_les in replacements_iterate.keys():
+            if '-' in num_les:
+                [start_num, stop_num] = [int(num_les[i]) for i in (0, -1)]
+                [add_num_les(num_les, i) for i in range(start_num, stop_num + 1)]
+            else:
+                add_num_les(num_les, num_les)
+
+        return replacements
 
 
     def parse(self):
@@ -319,7 +338,7 @@ class REPLACEMENTS:
                 if num_les not in self.student_d[group]:
                     self.student_d[group][num_les] = []
 
-                lesson.insert(-2, lesson[-1].title())
+                lesson.insert(-2, [lesson[-1].title()])
                 teacher_replacements = lesson.pop()
 
                 self.student_d[group][num_les].append(lesson)
@@ -333,12 +352,16 @@ class REPLACEMENTS:
                     if teacher:
                         if teacher not in self.teacher_d: self.teacher_d[teacher] = {}
                         lesson_for_teacher = [*lesson]
-                        lesson_for_teacher[-2] = group
+                        lesson_for_teacher[-2] = [group]
                         self.teacher_d[teacher][num_les] = [lesson_for_teacher]
         
         # сортируем пары учителей попорядку 
         for teacher, lessons in self.teacher_d.items():
             self.teacher_d[teacher] = {x: self.teacher_d[teacher][x] for x in sorted(lessons)}
+
+        # сплитим пары у групп
+        for group, lessons in self.student_d.items():
+            self.student_d[group] = self.split_num_lessons(lessons)
 
         return {1: self.student_d, 2: self.teacher_d}, date_rasp, offset
 
@@ -346,25 +369,21 @@ class REPLACEMENTS:
 
 
 class SYMBIOSIS:
-    def __init__(self, main_timetable: dict, replacements: dict, offset: int):
+    def __init__(self, all_replacements: dict, main_timetable: dict, replacements: dict, offset: int):
+        self.all_replacements = all_replacements
+
         self.main_timetable = main_timetable
         self.replacements = replacements
         self.offset = offset # 0 - числитель, -1 - знаменатель
 
-        self.index_lesson = 0
+        #print("main_timetable")
+        #pprint(self.main_timetable)
 
+        #print()
 
-    def split_num_lessons(self, replacements_iterate: dict):
-        def add_num_les(old_num, new_num):
-            self.replacements[str(new_num)] = replacements_iterate[old_num]
-        
-        self.replacements = {}
-        for num_les in replacements_iterate.keys():
-            if '-' in num_les:
-                [start_num, stop_num] = [int(num_les[i]) for i in (0, -1)]
-                [add_num_les(num_les, i) for i in range(start_num, stop_num + 1)]
-            else:
-                add_num_les(num_les, num_les)
+        #print("replacements")
+        #pprint(self.replacements)
+        #print()
 
     
     def sorted_numbers(self):
@@ -378,7 +397,6 @@ class SYMBIOSIS:
             if num_les not in self.main_timetable:
                 self.main_timetable[num_les] = []
             for lesson in lessons_array:
-                #lesson_one = lesson_info[self.offset]
                 offset_lesson = lesson[0]
                 if offset_lesson in (self.offset, ''):
                     self.main_timetable[num_les].append(lesson)
@@ -386,6 +404,19 @@ class SYMBIOSIS:
             if self.main_timetable[num_les] == []:
                 del self.main_timetable[num_les]
     
+
+    # ищем в заменах пары, которые нужно удалить
+    def search_to_delete(self):
+        for num_les, lessons_array in dict(self.main_timetable).items():
+            for lesson in lessons_array:
+                title = lesson[-2]
+                if num_les not in self.replacements:
+                    try:
+                        lesson_from_replacements = self.all_replacements[1][title][num_les]
+                        del self.main_timetable[num_les]
+                    except:
+                        pass
+
 
     def concatenation_numbers(self, sort_timetable: dict):
         def check_repetitive_lessons(last_lesson: list, lesson: list):
@@ -417,15 +448,16 @@ class SYMBIOSIS:
     def replace_handler(self, num_les: int, main_timetable_by_num: dict, lesson: list):
         replace = lesson[-3].lower()
         replace_lesson_text = lesson[-4]
-
+        
         for main_lesson in main_timetable_by_num:
-
+            
             main_index = self.main_timetable[num_les].index(main_lesson)
             main_lesson_text = main_lesson[-3]
-
+            
             try:
                 # удаляем пару из основного расписания
                 if replace == 'нет':
+
                     count_main_lessons = len(self.main_timetable[num_les])
                     
                     if count_main_lessons == 1:
@@ -438,12 +470,27 @@ class SYMBIOSIS:
                 
                 # заменяем в основном расписании кабинет и преподавателя
                 elif 'по расписанию' in replace:
-                    main_lesson = self.main_timetable[num_les][main_index]#[self.offset]
+                    main_lesson = self.main_timetable[num_les][main_index]
+                    
                     if main_lesson[0] in (self.offset, ''):
                         new_lesson = [*lesson]
                         new_lesson[-3] = main_lesson[-3]
                         self.main_timetable[num_les][main_index] = new_lesson
-                        return True 
+                        return True
+                
+                elif 'иностранный' in replace or 'немецкий' in replace:
+                    main_lesson = self.main_timetable[num_les][main_index]
+
+                    main_teachers_array = main_lesson[-2]
+                    replace_teacher = lesson[-2][0]
+                    
+                    if replace_teacher not in main_teachers_array:
+                        self.main_timetable[num_les].insert(0, lesson)
+                    
+                    if main_lesson[0] in (self.offset, ''):
+                        self.main_timetable[num_les][main_index][-1] = lesson[-1]
+                        return True
+
                 else:
                     raise KeyError
             
@@ -459,9 +506,9 @@ class SYMBIOSIS:
 
     def get(self):
 
-        self.split_num_lessons(self.replacements)
-
         self.clear_lessons_by_offset(self.main_timetable)
+
+        self.search_to_delete()
         
         # если основного расписания нет - возвращаем замены
         if self.main_timetable != {}:        
@@ -485,10 +532,8 @@ class SYMBIOSIS:
 
                     if self.replace_handler(num_les, main_timetable_by_num, lesson):
                         break
-
         else:
-            self.main_timetable = self.replacements        
-
+            self.main_timetable = self.replacements
         
         sort_timetable = self.sorted_numbers()
 
@@ -543,16 +588,11 @@ class TIMES:
 
     
     def get_text(self):
-        if ' ' in self.num_lessons:
-            return ''
         try:
             times = [self.get_time(self.num_lessons[i], self.audiences[i], i) for i in (0, -1)]
-            if times == ['','']:
-                return ''
             return f"C {times[0]}{' до ' if times[-1] != '' else ''}{times[-1]}"
-        except IndexError:
+        except:
             return ''
-
 
 
 
@@ -565,13 +605,20 @@ class MESSAGE:
         self.date_rasp = date_rasp
         self.day_type = day_type
 
+    def get_title(self, add_info, lesson):
+        if not add_info:
+            return ''
+        title = lesson[-2][0]
+        if len(lesson[-2]) != 1:
+            title = ' '.join(lesson[-2])
+        return f"(<b>{title}</b>)"
+
     def get(self):
         timetable_messages = [] # масиив со всеми типами распсиания
         for add_info in (0, 1): # 1 - добовить доп инфу
             message = f"Расписание на {self.date_rasp}\n"
             num_lessons = [] # массив номеров пар
             audiences = [] # массив всех кабинетов
-            group_or_teacher = '' # информация о группе или преподавателе, у которого пройдут занятия
             for num_les, lessons_array in self.ready_timetable.items():
 
                 num_les = num_les.replace('/', f"/{self.word_joiner}")
@@ -579,13 +626,12 @@ class MESSAGE:
                 message += f"{num_les}{'' if num_les in ('', ' ') else ') '}"
 
                 for lesson in lessons_array:
-                    if add_info:
-                        group_or_teacher = f"(<b>{lesson[-2]}</b>)"
                     
+                    title = self.get_title(add_info, lesson)
                     lesson_text = lesson[-3]
                     audience = lesson[-1]
 
-                    message += f"{update_str(lesson_text)} {audience} {group_or_teacher}\n"
+                    message += f"{update_str(lesson_text)} {audience} {title}\n"
                 
                 num_lessons.append(num_les)
                 audiences.append(audience)
@@ -620,13 +666,10 @@ class UPDATE_TIMETABLES:
         self.day_type = None
         self.spamming = True
 
-        time.sleep(5)
+        time.sleep(2)
         self.now = datetime.datetime.utcnow() + datetime.timedelta(hours = 3)
         self.today = datetime.datetime.strftime(self.now, "%d.%m.%Y")
         self.tomorrow = self.now + timedelta(days=1)
-
-        logger.info(f"Текущее время: hours = {self.now.hour}, start_time = {self.start_time}")
-        logger.info(f"Текущая дата: {self.today}")
 
         self.messages_timetable_array = []
 
@@ -652,15 +695,8 @@ class UPDATE_TIMETABLES:
             update_time_from_table = self.SELECT.update_time_by_day(self.today)
 
             # если нет замен
-            if all_replacements == {1: {}, 2: {}}:
-                # если сейчас ночь, то просто обновляем распсиание, без рассылки и убираем все last_action = timetable
-                #if 0 <= self.now.hour < self.start_time or self.now.hour == 23:
-                    #self.spamming = False
-                    #self.UPDATE.last_action()
-                
-                # в полночь просто обновляем дату и тд, распсиание не трогаем
-                if 0 <= self.now.hour < self.start_time or self.now.hour == 23:
-                    return self.get_database_info(self.SELECT)
+            if all_replacements == {1: {}, 2: {}}:                
+                return self.get_database_info(self.SELECT)
 
             # иначе если замены есть, и распсиание ещё не обновлялось
             elif (None,) in update_time_from_table:
@@ -675,13 +711,15 @@ class UPDATE_TIMETABLES:
                 # перебираем группы и расписания на неделю
                 for title, week_timetable in timetables.items():
 
+                    #if title not in ['21СЭ', '21САТ1', '19МТ']: continue
+
                     main_timetable = week_timetable[str(self.weekday)] # получаем расписание для текущего дня
                     try:
                         replacements = all_replacements[profile][title] # получаем замены для нужной группы
                     except KeyError:
                         replacements = {}
 
-                    ready_timetable = SYMBIOSIS(main_timetable, replacements, offset).get() # соединяем замены с основным распсианием
+                    ready_timetable = SYMBIOSIS(all_replacements, main_timetable, replacements, offset).get() # соединяем замены с основным распсианием
                     if ready_timetable == {}:
                         continue
 
@@ -690,7 +728,7 @@ class UPDATE_TIMETABLES:
                     # если группы нет с БД или поменялось расписание
                     if title not in self.all_timetables[profile] or add_info_timetable != self.all_timetables[profile][title][1]:
                         #self.messages_timetable_array.append((title, default_timetable, add_info_timetable, time_info, self.spamming, profile))
-                        logger.info(f"Запись нового расписания - {title}...")
+                        logger.info(f"Запись нового расписания - {title}")
                         obj_timetable = [(title, default_timetable, add_info_timetable, time_info, self.spamming, profile)]
                         self.INSERT_REPLACE.ready_rasp_message(obj_timetable)
                         self.UPDATE.last_action() 
