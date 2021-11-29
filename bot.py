@@ -176,9 +176,9 @@ def check_timetable():
 		
 		logger.info("CHECK_TIMETABLE")
 
-		#upd_timetables = UPDATE_TIMETABLES(SELECT, INSERT, INSERT_REPLACE, UPDATE, main_all_timetables, start_time, get_database_info)
+		upd_timetables = UPDATE_TIMETABLES(SELECT, INSERT, INSERT_REPLACE, UPDATE, main_all_timetables, start_time, get_database_info)
 
-		#all_timetables = upd_timetables.start()
+		all_timetables = upd_timetables.start()
 
 		change_group_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 1, count_colomn=3, rev=True)
 		change_teacher_keyboard = KEYBOARD(type_='inline').change_title(all_timetables, 2, count_colomn=1)
@@ -277,8 +277,8 @@ async def text_message(message: types.Message):
 
 	
 
-	elif current_action == 'call_schedule':
-		print(await bot.send_document(chat_id=user_id, document=open(call_schedule_file, 'rb')))
+	#elif current_action == 'call_schedule':
+		#print(await bot.send_document(chat_id=user_id, document=open(call_schedule_file, 'rb')))
 
 
 	
@@ -302,8 +302,9 @@ async def text_message(message: types.Message):
 							message_id_from_bot=bot_message.message_id, 
 							message_time=int(bot_message.date.timestamp()))
 
-		#await clear_chat(user_id, inf)
-
+		await clear_chat(user_id, inf)
+		
+		#write(history_message_file, content=D)
 	return obj
 
 
