@@ -1,0 +1,70 @@
+import time
+from datetime import datetime, timedelta
+
+
+class CreateSpamStatistics:
+    def __init__(self):
+        self.t_start = None
+        self.number_send_msg = 0
+        self.number_pin_msg = 0
+        self.names_array = []
+        self.message = ""
+
+    def start(self):
+        self.t_start = time.time()
+
+    def add_name(self, name_: str):
+        self.names_array.append(name_)
+
+    def count_msg(self):
+        self.number_send_msg += 1
+
+    def count_pin(self):
+        self.number_pin_msg += 1
+
+    def get_message(self):
+        if self.names_array:
+            time_spamming = round(time.time() - self.t_start, 2)
+            self.message += f"Отправлено: {self.number_send_msg}\n" \
+                            f"Закреплено: {self.number_pin_msg}\n" \
+                            f"Общее время рассылки: {time_spamming}\n" \
+                            f"Изменилось расписание для: {', '.join(self.names_array)}"
+        else:
+            self.message = ""
+
+        self.number_send_msg = 0
+        self.number_pin_msg = 0
+        self.names_array = []
+        return self.message
+
+
+def get_next_check_time(array_times: list, func_name: str):
+    """Расчет времени до следующего цикла в зависимости от имени функции"""
+
+    delta = 0
+    one_second = 0
+
+    now = datetime.now()
+    week_day_id = now.weekday()
+    type_week_day = "saturday" if week_day_id == 5 else "weekday"
+
+    for t in array_times[func_name][type_week_day]:
+        now = datetime.now()
+
+        one_second = round(now.microsecond / 1000000)
+
+        check_t = datetime.strptime(t, "%H:%M")
+
+        delta = timedelta(hours=now.hour - check_t.hour,
+                          minutes=now.minute - check_t.minute,
+                          seconds=now.second - check_t.second)
+
+        if week_day_id == 6:
+            break
+
+        seconds = delta.total_seconds()
+        if seconds < 0:
+            return seconds * (-1) + one_second
+
+    seconds = (timedelta(hours=24) - delta).total_seconds()
+    return seconds + one_second
