@@ -36,6 +36,3 @@ if __name__ == '__main__':
         loop.call_later(5, repeat, check_replacement, loop)
 
         loop.run_until_complete(asyncio.wait(tasks))
-
-        # start_telegram_bot()
-        # start_vk_bot()
