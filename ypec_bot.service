@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram bot 'ypec_bot'
+After=syslog.target
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/ypec/ypec_bot
+ExecStart=/usr/bin/python3 /home/ypec/ypec_bot/run.py
+RestartSec=5
+Restart=always
+ 
+[Install]
+WantedBy=multi-user.target
