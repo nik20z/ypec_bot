@@ -28,7 +28,7 @@
 
 Вконтакте:
 - [ ] Увеличить количество подписок и добавить персональную настройку по карточкам групп/преподавателей, как к тг
-- [ ] Реализовать возможность работы бота в беседе (+добавиьь настройку закрепа для бесед)
+- [ ] Реализовать возможность работы бота в беседе (+добавить настройку закрепа для бесед)
 - [ ] Придумать, как можно упростить листание списка групп/преподавателей 
 - [ ] Добавить возможность просмотра расписания за конкретный день (как в тг)
 
@@ -59,7 +59,7 @@ dpkg-reconfigure locales
 apt-get install language-pack-ru
 ```
 
-Изменяем локаль кластера базы данных
+Изменяем локаль кластера базы данных (12 заменяем на вашу версию postgres)
 ```
 pg_lsclusters
 pg_dropcluster --stop 12 main
@@ -78,6 +78,13 @@ sudo -i -u postgres
   exit
 ```
 
+Клонируем репозиторий
+```
+cd /home/ypec
+git clone https://github.com/nik20z/ypec_bot.git
+cd ypec_bot
+```
+
 Устанавливаем необходимые библиотеки
 ```
 pip3 install aiohttp
@@ -94,13 +101,7 @@ pip3 install vkbottle
 
 Альтернативный способ установки всех библиотек
 ```
-cd /home/ypec
 # pip3 install -r requirements.txt
-```
-
-Клонируем репозиторий
-```
-git clone https://github.com/nik20z/ypec_bot.git
 ```
 
 Вносим правки в файл /bot/misc/env.py
@@ -118,10 +119,9 @@ systemctl daemon-reload
 systemctl enable ypec_bot
 systemctl start ypec_bot
 systemctl status ypec_bot
-
 ```
 
-Если необхоимо изменить часовой пояс
+При необходимости меняем часовой пояс
 ```
 timedatectl
 timedatectl list-timezones
