@@ -51,3 +51,13 @@ def get_back_button(last_callback_data,
         return keyboard
 
     return back_button
+
+
+def get_date_by_ind(dates_array: list, ind_date_: int):
+    """Получить дату из массива по индексу"""
+    if ind_date_ >= 0:
+        try:
+            return dates_array[ind_date_]
+        except IndexError:
+            pass
+    return 'empty'
