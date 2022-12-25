@@ -6,9 +6,11 @@ from .util import get_condition_smile
 from .util import get_paging_button
 from .util import split_array
 from .util import get_back_button
+from .util import get_date_by_ind
 
 from bot.functions import month_translate
 from bot.functions import week_day_translate
+from bot.functions import get_day_week_by_id
 
 from bot.misc import Donate
 from bot.misc import Communicate
@@ -104,12 +106,18 @@ def create_name_list(keyboard: InlineKeyboardMarkup,
                      short_type_name: str,
                      row_width: int = 1):
     """Список групп/преподавателей в меню настроек"""
-    for row_names in split_array(names_array, row_width):
+    names_array_dict = {}
+    for one_name in names_array:
+        id_ = one_name[0]
+        name_ = one_name[1]
+        spam_state = one_name[2]
+        names_array_dict[name_] = [id_, spam_state]
+
+    names_sort = sorted(names_array_dict.keys())
+    for row_names in split_array(names_sort, row_width):
         name_list_button = []
-        for one_name in row_names:
-            id_ = one_name[0]
-            name_ = one_name[1]
-            spam_state = one_name[2]
+        for name_ in row_names:
+            id_, spam_state = names_array_dict[name_]
             smile_spam_state = '🌀' if spam_state == 'true' else ''  # 🌀 🔰 ▫ 📍
 
             group_btn = Button(f"{name_} {smile_spam_state}").inline(f"s {short_type_name}c {id_}")
@@ -135,8 +143,8 @@ def user_settings(user_settings_data: list,
     short_type_name = {'group_': 'g', 'teacher': 't'}.get(type_name)
 
     main_subscribe_btn = Button(f"⭐ {name_}").inline(f"s {short_type_name}c {name_id}")
-    groups_list_btn = Button('Группы 👨‍🎓').inline("s g_list 1")
-    teacher_list_btn = Button('Преподаватели 👨‍🏫').inline("s t_list 0")
+    groups_list_btn = Button('👨🏻‍🎓 Группы 👩🏻‍🎓').inline("s g_list 1")
+    teacher_list_btn = Button('👨🏻‍🏫 Преподаватели 👩🏻‍🏫').inline("s t_list 0")
 
     group_first_row = [groups_list_btn]
     teacher_first_row = [teacher_list_btn]
@@ -159,8 +167,8 @@ def user_settings(user_settings_data: list,
     # teacher names
     keyboard = create_name_list(keyboard, teachers_array, "t", row_width=row_width_teacher)
 
-    main_settings_btn = Button("⚙").inline(f"s ms")
-    support_btn = Button("Поддержать").inline(f"s support")
+    main_settings_btn = Button("⚙").inline("s ms")
+    support_btn = Button("Поддержать").inline("s support")
 
     keyboard.add(main_settings_btn, support_btn)
 
@@ -176,12 +184,16 @@ def main_settings(user_settings_data: list, row_width: int = 2):
     spamming = user_settings_data[5]
     pin_msg = user_settings_data[6]
     view_name = user_settings_data[7]
-    view_add = user_settings_data[8]
-    view_time = user_settings_data[9]
+    view_week_day = user_settings_data[8]
+    view_add = user_settings_data[9]
+    view_time = user_settings_data[10]
+    # view_dpo_info = user_settings_data[11]
 
+    # 'view_dpo_info': ['ДПО', view_dpo_info]
     button_info = {'spamming': ['🔔 Рассылка', spamming],
                    'pin_msg': ['📌 Закреплять', pin_msg],
                    'view_name': ['ℹ Заголовок', view_name],
+                   'view_week_day': ['День недели', view_week_day],
                    'view_add': ['🏷 Подробно', view_add],
                    'view_time': ['⌚ Время', view_time]}
 
@@ -192,8 +204,6 @@ def main_settings(user_settings_data: list, row_width: int = 2):
         condition_text = Button(get_condition_smile(bool_obj)).inline(f"update_main_settings_bool {key}")
         keyboard.row(text_btn, condition_text)
 
-    #get_sync_code_btn = Button("Код синхронизации").inline(f"s ms get_sync_code")
-    #keyboard.add(get_sync_code_btn)
     keyboard.add(get_back_button("s"))
 
     return keyboard
@@ -207,14 +217,14 @@ def support(callback_data: str,
     vk_btn = Button('💬 Вконтакте 💬').inline("", url=Communicate.DEVELOPER)
     inst_btn = Button('📷 Instagram 📷').inline("", url=Communicate.INSTAGRAM)
     future_updates_btn = Button("⚠ Баги и ошибки ⚠").inline(f"{callback_data} future_updates")
-    #report_problem_btn = Button("✏ Сообщить о проблеме ✏").inline("", url=Communicate.DEVELOPER)
+    # report_problem_btn = Button("✏ Сообщить о проблеме ✏").inline("", url=Communicate.DEVELOPER)
     donate_btn = Button("💳 Отправить донат 💳").inline(f"{callback_data} donate")
     back_btn = get_back_button(last_callback_data)
 
     keyboard.add(vk_btn)
     keyboard.add(inst_btn)
     keyboard.add(future_updates_btn)
-    #keyboard.add(report_problem_btn)
+    # keyboard.add(report_problem_btn)
     keyboard.add(donate_btn)
     keyboard.add(back_btn)
 
@@ -250,16 +260,20 @@ def group__card(group__user_info: list,
 
     # group__id = group__user_info[0]
     group__name = group__user_info[1]
-    main_subscribe = group__user_info[2]
-    subscribe_state = group__user_info[3]
-    spam_state = group__user_info[4]
+    department = group__user_info[2]
+    dpo_state = group__user_info[3]
+    main_subscribe = group__user_info[4]
+    subscribe_state = group__user_info[5]
+    spam_state = group__user_info[6]
 
-    group__name_btn = Button(group__name).inline(f"* {group__name}")
+    department_smile = {0: '💰', 1: '🧪', 2: '🛠️'}.get(department, '')  # 💸
+    group__name_btn = Button(f"{department_smile} {group__name} {department_smile}").inline(f"* {group__name}")
 
     main_subscribe_btn = Button(get_condition_smile(main_subscribe)).inline(f"{callback_data} m_sub_gr")
 
     week_days_main_timetable_btn = Button("Основное расписание").inline(f"{callback_data} wdmt")
     history_ready_timetable_btn = Button("История").inline(f"{callback_data} mhrt")
+    dpo_btn = Button("ДПО").inline(f"{callback_data} dpo")
     spam_text_btn = Button("🌀 Рассылка").inline("settings_info spamming")
     spam_btn = Button(get_condition_smile(spam_state)).inline(f"{callback_data} sp_gr")
     subscribe_text_btn = Button("☄ Подписка").inline("settings_info subscribe")
@@ -270,6 +284,8 @@ def group__card(group__user_info: list,
     keyboard.add(group__name_btn, main_subscribe_btn)
     keyboard.add(week_days_main_timetable_btn)
     keyboard.add(history_ready_timetable_btn)
+    if dpo_state:
+        keyboard.add(dpo_btn)
     keyboard.add(spam_text_btn, spam_btn)
     keyboard.add(subscribe_text_btn, subscribe_btn)
     keyboard.add(back_btn, ready_timetable_btn)
@@ -285,17 +301,21 @@ def teacher_card(teacher_user_info: tuple,
 
     teacher_id = teacher_user_info[0]
     teacher_name = teacher_user_info[1]
-    main_subscribe = teacher_user_info[2]
-    subscribe_state = teacher_user_info[3]
-    spam_state = teacher_user_info[4]
+    gender = teacher_user_info[2]
+    dpo_state = teacher_user_info[3]
+    main_subscribe = teacher_user_info[4]
+    subscribe_state = teacher_user_info[5]
+    spam_state = teacher_user_info[6]
 
-    group__name_btn = Button(teacher_name).inline(f"* {teacher_name}")
+    gender_smile = '' if gender is None else '👨🏻‍🏫 ' if gender else '👩🏻‍🏫 '
+    teacher_name_btn = Button(f"{gender_smile}{teacher_name}").inline(f"* {teacher_name}")
 
     main_subscribe_btn = Button(get_condition_smile(main_subscribe)).inline(f"{callback_data} m_sub_tch")
 
     week_days_main_timetable_btn = Button("Основное расписание").inline(f"{callback_data} wdmt")
     history_ready_timetable_btn = Button("История").inline(f"{callback_data} mhrt")
     lessons_list_btn = Button("📋 Список дисциплин").inline(f"{callback_data} lessons_list {teacher_id}")
+    dpo_btn = Button("ДПО").inline(f"{callback_data} dpo")
     spam_text_btn = Button("🌀 Рассылка").inline("settings_info spamming")
     spam_btn = Button(get_condition_smile(spam_state)).inline(f"{callback_data} sp_tch")
     subscribe_text_btn = Button("☄ Подписка").inline("settings_info subscribe")
@@ -303,10 +323,12 @@ def teacher_card(teacher_user_info: tuple,
     back_btn = get_back_button(last_callback_data)
     ready_timetable_btn = Button("Текущее расписание").inline(f"{callback_data} t_rt")
 
-    keyboard.add(group__name_btn, main_subscribe_btn)
+    keyboard.add(teacher_name_btn, main_subscribe_btn)
     keyboard.add(week_days_main_timetable_btn)
     keyboard.add(history_ready_timetable_btn)
     keyboard.add(lessons_list_btn)
+    if dpo_state:
+        keyboard.add(dpo_btn)
     keyboard.add(spam_text_btn, spam_btn)
     keyboard.add(subscribe_text_btn, subscribe_btn)
     keyboard.add(back_btn, ready_timetable_btn)
@@ -314,7 +336,8 @@ def teacher_card(teacher_user_info: tuple,
     return keyboard
 
 
-def week_days_main_timetable(callback_data,
+def week_days_main_timetable(week_days_id_main_timetable_array,
+                             callback_data: str,
                              current_week_day_id: int = None,
                              last_callback_data: str = None,
                              row_width: int = 2):
@@ -325,19 +348,11 @@ def week_days_main_timetable(callback_data,
     get_main_timetable_btn = Button("📥 Скачать txt 📥").inline(f"{callback_data} download_main_timetable")
     keyboard.add(get_main_timetable_btn)
 
-    days_week = {'Понедельник': 0,
-                 'Вторник': 1,
-                 'Среда': 2,
-                 'Четверг': 3,
-                 'Пятница': 4,
-                 'Суббота': 5
-                 }
-
-    for week_day, id_ in days_week.items():
-        week_day_text_btn = week_day
-        if id_ == current_week_day_id:
-            week_day_text_btn = f"🟢 {week_day} 🟢"
-        week_day_btn = Button(week_day_text_btn).inline(f"{callback_data} {id_}")
+    for week_day_id in week_days_id_main_timetable_array:
+        week_day_text_btn = get_day_week_by_id(week_day_id)
+        if week_day_id == current_week_day_id:
+            week_day_text_btn = f"🟢 {week_day_text_btn} 🟢"
+        week_day_btn = Button(week_day_text_btn).inline(f"{callback_data} {week_day_id}")
         buttons.append(week_day_btn)
 
     keyboard.add(*buttons)
@@ -369,7 +384,8 @@ def dates_ready_timetable(dates_array: list,
     keyboard = InlineKeyboardMarkup(row_width=2)
     buttons = []
 
-    get_ready_timetable_by_month_btn = Button("📥 Скачать txt 📥").inline(f"{callback_data} download_ready_timetable_by_month")
+    get_ready_timetable_by_month_btn = Button("📥 Скачать txt 📥").inline(
+        f"{callback_data} download_ready_timetable_by_month")
     keyboard.add(get_ready_timetable_by_month_btn)
 
     for date_ in dates_array:
@@ -388,5 +404,29 @@ def dates_ready_timetable(dates_array: list,
 
     keyboard.add(*buttons)
     keyboard.add(get_back_button(last_callback_data))
+
+    return keyboard
+
+
+def timetable_paging(type_name: str,
+                     name_id: int,
+                     dates_array: list,
+                     date_: str,
+                     last_callback_data: str,
+                     add_back_button: bool = False):
+    """Кнопки листания расписания"""
+    keyboard = InlineKeyboardMarkup(row_width=2)
+
+    ind_date_ = dates_array.index(date_)
+
+    last_date_ = get_date_by_ind(dates_array, ind_date_ - 1)
+    next_date = get_date_by_ind(dates_array, ind_date_ + 1)
+
+    left_btn = get_paging_button(f"{last_callback_data} timetable_paging {type_name} {name_id} {last_date_}", direction="left")
+    right_btn = get_paging_button(f"{last_callback_data} timetable_paging {type_name} {name_id} {next_date}", direction="right")
+    keyboard.add(left_btn, right_btn)
+
+    if add_back_button:
+        keyboard.add(get_back_button(last_callback_data))
 
     return keyboard
