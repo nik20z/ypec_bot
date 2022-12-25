@@ -4,7 +4,7 @@ from bot.misc import Donate
 
 
 def welcome_message_private(user_name: str):
-    return f"Привет {user_name} (^_^)\n" \
+    return f"Привет, {user_name} (^_^)\n" \
            f"Я бот колледжа ЯПЭК\n" \
            f"Давай определим твой статус 👀"
 
@@ -39,6 +39,11 @@ def errors(type_error: str):
 
     if type_error == "other":
         return "Ошибка!"
+
+
+def not_exist_timetable(name_: str):
+    """В БД нет данных о расписании"""
+    return f"В базе данных нет информации о расписаниии для <b>{name_}</b>"
 
 
 def call_schedule():
@@ -114,7 +119,9 @@ def lessons_list_by_teacher(teacher_name: str, lessons_list: list):
 
 
 def week_days_main_timetable():
-    return "Дни недели"
+    return "Дни недели\n" \
+           "◽ - числитель\n" \
+           "◾ - знаменатель"
 
 
 def help_message():

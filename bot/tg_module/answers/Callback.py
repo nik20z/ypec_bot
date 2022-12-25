@@ -16,7 +16,10 @@ def settings_info(type_info: str):
         return "Закрепление присланного расписания в диалоге"
 
     if type_info == "view_name":
-        return "Добавление информации в сообщение о группе/преподавателя, для которых составлено расписание"
+        return "Добавление информации в сообщение о группе/преподавателе, для которых составлено расписание"
+
+    if type_info == "view_week_day":
+        return "Указывать после даты день недели (в скобках)"
 
     if type_info == "view_add":
         return "Отображение ФИО преподавателя, ведущего пару, или названия группы"
@@ -24,18 +27,33 @@ def settings_info(type_info: str):
     if type_info == "view_time":
         return "Отображать время начала и окончания занятий"
 
+    if type_info == "view_dpo_info":
+        return "Добавлять в расписание информацию о ДПО"
+
     if type_info == "subscribe":
         return "Подписка"
 
     return "Error!"
 
 
-def not_timetable_by_week_day(week_day: str):
+def not_timetable_paging():
+    return f"Расписание отсутствует"
+
+
+def not_week_days_main_timetable():
+    return "Основного расписания нет"
+
+
+def not_main_timetable_by_week_day(week_day: str):
     return f"Расписания на {week_day} нет"
 
 
 def not_ready_timetable():
     return "Расписание отсутствует"
+
+
+def not_months_history_ready_timetable():
+    return "Информация о расписании отсутствует"
 
 
 def not_ready_timetable_by_month(month: str):
