@@ -4,7 +4,7 @@ from bot.misc import Donate
 
 
 def welcome_message_private(user_name: str):
-    return f"Привет {user_name} (^_^)\n" \
+    return f"Привет, {user_name} (^_^)\n" \
            f"Я бот колледжа ЯПЭК\n" \
            f"Давай определим твой статус 👀"
 
@@ -113,7 +113,9 @@ def lessons_list_by_teacher(teacher_name: str, lessons_list: list):
 
 
 def week_days_main_timetable():
-    return "Дни недели"
+    return "Дни недели\n" \
+           "◽ - числитель\n" \
+           "◾ - знаменатель"
 
 
 def help_message():
@@ -121,7 +123,7 @@ def help_message():
            "Команды:\n" \
            "/start\n" \
            "/help\n" \
-           "/show_keyboard\n"
+           "/keyboard\n"
 
 
 def show_keyboard():
@@ -156,9 +158,9 @@ def help_admin():
 
 def other_messages():
     phrases = ["Извини, но я тебя не понимаю..",
-               "Попробуй посмотреть, что я умею по команде /help",
-               "Мне не нужно писать! У меня есть всего 2 команды:\n"
-               "/settings\n"
-               "/timetable\n"
-               "Используй их)"]
+               "Попробуй посмотреть, что я умею по команде\n"
+               "/help",
+               "Мне не нужно писать! Используй кнопки\n"
+               "Если их нет, то отправь команду\n"
+               "/keyboard"]
     return random.choice(phrases)

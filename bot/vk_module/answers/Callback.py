@@ -39,6 +39,10 @@ def not_ready_timetable():
     return "Расписание отсутствует"
 
 
+def not_week_days_main_timetable():
+    return "Основного расписания нет"
+
+
 def not_ready_timetable_by_month(month: str):
     return f"Расписание на {month} отсутствует"
 
