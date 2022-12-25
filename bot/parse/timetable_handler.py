@@ -95,6 +95,7 @@ class TimetableHandler:
             return "NO"
 
         Insert.lesson(self.rep.lesson_names)
+        Insert.practice(self.rep.data_practice)
         Insert.teacher(self.rep.teacher_names)
         Insert.audience(self.rep.audience_names)
 
@@ -250,8 +251,8 @@ class TimetableHandler:
                         elif replace_for_lesson.strip().lower() == 'нет':
                             """Обработчик ---нет---"""
 
-                            if len(name_array) == 1 and last_num_lesson != num_lesson:
-                                """Если пару ведёт один преподаватель и номер в прошлой итерации не равен текущему номеру пары"""
+                            if (len(name_array) == 1 or rep_name is None) and last_num_lesson != num_lesson:
+                                """(Если пару ведёт один преподаватель или в заменах не указан преподаватель) и номер в прошлой итерации не равен текущему номеру пары"""
                                 del timetable_dict[num_lesson]
                                 break
 
@@ -286,8 +287,8 @@ class TimetableHandler:
                     if replace_for_lesson.strip().lower() != 'нет':
                         """Если пара не отменяется, то добавляем её как новую"""
 
-                        if num_lesson == '' and num_lesson != last_num_lesson:
-                            """Если нет номера пары (практика и тд), тор удаляем все пары и заносим только замены"""
+                        if (num_lesson == '' or '/' in num_lesson) and num_lesson != last_num_lesson:
+                            """Если нет номера пары (практика и тд), то удаляем все пары и заносим только замены"""
                             timetable_dict = {}
 
                         timetable_dict[num_lesson] = [[replace_for_lesson, [rep_name], rep_audience_array]]

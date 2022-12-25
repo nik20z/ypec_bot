@@ -1,5 +1,6 @@
 import aiohttp
 from bs4 import BeautifulSoup
+from datetime import datetime
 import requests
 
 from bot.database import Select
@@ -57,6 +58,44 @@ def get_num_les_array(num_lesson: str):
     return [num_lesson]
 
 
+def check_practice(lesson_name: str):
+    """Проверка названия пары на практику"""
+    for x in ('УП', 'ПП', 'практик'):
+        if x in lesson_name:
+            return True
+    return False
+
+
+def get_dates_practice(lesson_name):
+    """Получаем дату начала и окончания практики"""
+    current_year = datetime.now().year
+    lesson_name_replace = lesson_name.replace('-', ' ')
+    lesson_name_split = lesson_name_replace.split()
+
+    dates_array = []
+
+    for date_string in lesson_name_split:
+        """Перебираем элементы названия пары"""
+        for i in ('.', '/', '-', ':'):
+            """Перебираем символы-разделители дат"""
+            try:
+                """Заносим в массив всё, что похоже на дату"""
+                datetime_object = datetime.strptime(f"{date_string}{i}{current_year}", f"%d{i}%m{i}%Y")
+                date_object = datetime.date(datetime_object)
+                dates_array.append(date_object)
+            except ValueError:
+                continue
+
+    if dates_array:
+        """Если массив не пустой, то возвращаем даты"""
+        start_date = dates_array[0]
+        stop_date = dates_array[-1]
+
+        return start_date, stop_date
+
+    return None, None
+
+
 class Replacements:
     """Класс для обработки замен
 
@@ -79,6 +118,7 @@ class Replacements:
 
     def __init__(self):
         self.data = []
+        self.data_practice = []
         self.date = None
         self.week_lesson_type = None
         self.group__names = set()
@@ -93,6 +133,28 @@ class Replacements:
         date_text = soup.find("div", itemprop="articleBody").find("strong").text.lower()
         self.date = date_text.split()[2]
         self.week_lesson_type = True if "числ" in date_text else False if "знам" in date_text else None
+
+    def get_rows(self, soup: BeautifulSoup):
+        """Получаем массив встрок, при этом обрабатываем первую строчку"""
+        start = 6
+        stop = 12
+
+        table_soup = soup.find('table', class_='isp')
+        self.get_date(soup)
+        rows = table_soup.find_all('tr')[1:]
+
+        first_row = table_soup.find_all('td')[start:stop]
+        for td in first_row:
+            if td.find_all('i'):
+                stop = 11
+                first_row = table_soup.find_all('td')[start:stop]
+
+        new_tr = soup.new_tag("tr")
+        for td in first_row:
+            new_tr.append(td)
+
+        rows.insert(0, new_tr)
+        return rows
 
     async def parse(self, day: str = 'tomorrow'):
         """Парсим замены и заносим данные в массив self.data"""
@@ -114,18 +176,7 @@ class Replacements:
     def table_handler(self, soup: BeautifulSoup):
         group__name = None
 
-        table_soup = soup.find('table', class_='isp')
-        self.get_date(soup)
-        rows = table_soup.find_all('tr')[1:]
-
-        # Обрабатываем первую строчку
-        first_row = table_soup.find_all('td')[6:12]
-        new_tr = soup.new_tag("tr")
-
-        for td in first_row:
-            new_tr.append(td)
-
-        rows.insert(0, new_tr)
+        rows = self.get_rows(soup)
 
         for tr in rows:
             """Перебираем строчки таблицы"""
@@ -165,6 +216,7 @@ class Replacements:
                 """Перебираем номера пар"""
                 for num_lesson in num_les_array:
 
+                    """Перебираем учителей"""
                     for teacher_name in teacher_names_array:
                         ind = teacher_names_array.index(teacher_name)
                         teacher_name_corrected = get_correct_teacher_name(teacher_name)
@@ -172,11 +224,10 @@ class Replacements:
                         maybe_teacher_name = Select.query_info_by_name('teacher',
                                                                        info='name',
                                                                        value=teacher_name_corrected)
-
                         if maybe_teacher_name:
                             maybe_teacher_name = maybe_teacher_name[0]
 
-                        if maybe_teacher_name is None:
+                        else:
                             maybe_teacher_name = teacher_name_corrected
                             if len(maybe_teacher_name) > 5:
                                 self.teacher_names.add(maybe_teacher_name)
@@ -198,6 +249,20 @@ class Replacements:
 
                         self.data.append(one_lesson_data)
 
+                        """Если имеем дело с практикой"""
+                        if num_lesson != '':
+                            if check_practice(replace_for_lesson):
+                                [stop_date, start_date] = get_dates_practice(replace_for_lesson)
+                                if stop_date is not None and start_date is not None:
+                                    one_practice = (group__name,
+                                                    replace_for_lesson,
+                                                    teacher_name,
+                                                    audience,
+                                                    stop_date,
+                                                    start_date)
+                                    self.data_practice.append(one_practice)
+
+                        """Формируем массив пар"""
                         if replace_for_lesson not in ('Нет', 'По расписанию'):
                             self.lesson_names.add(replace_for_lesson)
 
