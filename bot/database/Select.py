@@ -82,8 +82,27 @@ def main_timetable(type_name: str,
     return cursor.fetchall()
 
 
-def replacement(type_name: str,
-                name_: str):
+def dpo(type_name: str, name_: str, week_day_id: int):
+    """Получаем расписание ДПО"""
+    type_name_invert = get_type_name_invert(type_name)
+    query = """
+                SELECT array_agg(DISTINCT num_lesson) AS num_les,
+                       array_agg(DISTINCT COALESCE(NULLIF(lesson_name, ''), '...')),
+                       json_object_agg(DISTINCT COALESCE(NULLIF({1}_name, ''), '...'), audience_name),
+                       ARRAY[NULL]
+                FROM dpo_info
+                WHERE {0}_name = '{2}' AND week_day_id = {3}
+                GROUP BY lesson_name, {1}_name, audience_name
+                ORDER BY num_les
+                """.format(type_name,
+                           type_name_invert,
+                           name_,
+                           week_day_id)
+    cursor.execute(query)
+    return cursor.fetchall()
+
+
+def replacement(type_name: str, name_: str):
     """Получить замены"""
     type_name_invert = get_type_name_invert(type_name)
     query = """
@@ -107,21 +126,25 @@ def ready_timetable(type_name: str,
                     date_: str,
                     name_: str):
     """Получить готовое расписание"""
-    reverse_type_name = {'group_': 'teacher', 'teacher': 'group_'}.get(type_name)
+    type_name_invert = get_type_name_invert(type_name)
     query = """
             SELECT array_agg(DISTINCT num_lesson) AS num_les,
                    array_agg(DISTINCT COALESCE(NULLIF(lesson_name, ''), '...')),
-                   json_object_agg(DISTINCT COALESCE(NULLIF({0}_name, ''), '...'), audience_name),
+                   json_object_agg(DISTINCT COALESCE(NULLIF({1}_name, ''), '...'), audience_name),
                    ARRAY[NULL]
             FROM ready_timetable_info
-            WHERE date_ = '{2}' AND {1}_name = '{3}'
-            GROUP BY lesson_name, {0}_name, audience_name
+            WHERE (date_ = '{2}' AND {0}_name = '{3}') 
+                AND ('{0}' = 'group_'
+                    OR (group__name NOT IN (SELECT practice_info.group__name 
+                                            FROM practice_info 
+                                            WHERE '{2}' >= start_date AND '{2}' <= stop_date)
+                    AND '{0}' = 'teacher'))
+            GROUP BY lesson_name, {1}_name, audience_name
             ORDER BY num_les
-            """.format(reverse_type_name,
-                       type_name,
+            """.format(type_name,
+                       type_name_invert,
                        date_,
                        name_)
-
     #  AND {0}_name IS NOT NULL
 
     cursor.execute(query)
@@ -187,8 +210,10 @@ def user_info(user_id: int, table_name: str = "telegram"):
                         spamming, 
                         pin_msg, 
                         view_name, 
+                        view_week_day,
                         view_add, 
-                        view_time
+                        view_time,
+                        view_dpo_info
                 FROM {1}
                 WHERE user_id = {0}
                 """.format(user_id, table_name)
@@ -196,14 +221,18 @@ def user_info(user_id: int, table_name: str = "telegram"):
     return cursor.fetchone()
 
 
-def user_info_by_column_names(user_id: int, column_names: list = None, table_name: str = "telegram"):
+def user_info_by_column_names(user_id: int,
+                              column_names: list = None,
+                              table_name: str = "telegram"):
     """Данные о пользователе по конкретным колонкам"""
     if column_names is None:
         column_names = ["CASE WHEN type_name THEN 'group_' WHEN not type_name THEN 'teacher' ELSE NULL END",
                         "name_id",
                         "view_name",
+                        "view_week_day",
                         "view_add",
-                        "view_time"]
+                        "view_time",
+                        "view_dpo_info"]
     query = """SELECT {1}
                 FROM {2}
                 WHERE user_id = {0}
@@ -218,39 +247,50 @@ def user_info_name_card(type_name: str,
                         user_id: int,
                         name_id: int,
                         table_name: str = "telegram"):
-    """Информация о подписках пользователя"""
+    """Информация о подписках пользователя
+    id
+    name
+    gender/department
+        ДПО
+    главная подписка
+    подписка
+    рассылка
+    """
+    additional_info = 'department' if type_name == 'group_' else 'gender'
     query = """SELECT {0}_id, 
                       {0}_name,
+                      {4},
+                      {0}_id IN (SELECT {0}_id FROM dpo),
                         case 
                             when type_name
                             then {2} = name_id and '{0}' = 'group_'
                             else not type_name and {2} = name_id and '{0}' = 'teacher'
                         end,
-                        {2} = ANY({0}_ids),
-                        {2} = ANY(spam_{0}_ids)
+                      {2} = ANY({0}_ids),
+                      {2} = ANY(spam_{0}_ids)
                 FROM {3}
                 LEFT JOIN {0} ON {2} = {0}.{0}_id
                 WHERE user_id = {1}
                 """.format(type_name,
                            user_id,
                            name_id,
-                           table_name)
+                           table_name,
+                           additional_info)
     cursor.execute(query)
     return cursor.fetchone()
 
 
-'''
-def courses_and_group__name_array():
-    """Вывести массивы групп по курсам"""
-    query = """SELECT DISTINCT substring(group__name from 1 for 2) AS course_year,
-                    array_agg(group__name ORDER BY group__name)
-                FROM group_
-                GROUP BY course_year
-                ORDER BY course_year DESC
-                """
+def week_days_timetable(type_name: str, name_id: int, table_name: str):
+    """Получить список дней недели с готовым расписанием или ДПО"""
+    query = """SELECT DISTINCT week_day_id
+               FROM {2}
+               WHERE {0}_id = {1} 
+               ORDER BY week_day_id
+               """.format(type_name,
+                          name_id,
+                          table_name)
     cursor.execute(query)
-    return cursor.fetchall()
-'''
+    return concert_fetchall_to_list(cursor.fetchall())
 
 
 def group_(grouping: bool = True):
@@ -272,7 +312,7 @@ def group_(grouping: bool = True):
         return cursor.fetchall()
 
 
-def all_info(table_name: str, column_name: str = "group__name"):
+def all_info(table_name: str, column_name: str):    # column_name: str = "group__name"
     """Получить массив всех строчек по одной колонке"""
     query = "SELECT {1} FROM {0}".format(table_name, column_name)
     cursor.execute(query)
@@ -397,6 +437,16 @@ def names_rep_different(type_name: str):
     return spam_ids
 
 
+def names_for_spamming(table_name: str):
+    """Список id для рассылки по table_name"""
+    query = """SELECT {0}_id 
+               FROM {0} 
+               WHERE {0}_id NOT IN (SELECT {0}_id FROM practice WHERE CURRENT_DATE <= stop_date)
+               """.format(table_name)
+    cursor.execute(query)
+    return concert_fetchall_to_list(cursor.fetchall())
+
+
 def user_ids_spamming(type_name: str,
                       name_id: int,
                       table_name: str = "telegram"):
@@ -424,41 +474,74 @@ def user_ids_spamming(type_name: str,
 def dates_ready_timetable(month: str = None,
                           type_name: str = None,
                           name_id: int = None,
+                          type_date: str = 'datetime',
                           type_sort: str = 'DESC'):
     """Список дат с готовым расписанием для определённого месяца"""
-    query = """SELECT DISTINCT date_
-               FROM ready_timetable
-               WHERE to_char(date_, 'Mon') = '{0}' AND {1}_id = {2}
-               ORDER BY date_ {3}
-               """.format(month,
-                          type_name,
-                          name_id,
-                          type_sort)
+    date_column = 'date_'
+    if type_date == 'string':
+        date_column = "to_char(date_, 'DD.MM.YYYY')"
+
+    if month is None:
+        query = """SELECT DISTINCT {0}, date_
+                                   FROM ready_timetable
+                                   WHERE {1}_id = {2}
+                                   ORDER BY date_ {3}
+                                   """.format(date_column,
+                                              type_name,
+                                              name_id,
+                                              type_sort)
+    else:
+        query = """SELECT DISTINCT {0}, date_
+                           FROM ready_timetable
+                           WHERE {2}_id = {3} AND to_char(date_, 'Mon') = '{1}'
+                           ORDER BY date_ {4}
+                           """.format(date_column,
+                                      month,
+                                      type_name,
+                                      name_id,
+                                      type_sort)
     cursor.execute(query)
     return concert_fetchall_to_list(cursor.fetchall())
 
 
-def months_ready_timetable():
+def months_ready_timetable(type_name: str = None, name_id: int = None):
     """Список месяцев для которых имеется готовое расписание"""
-    query = """SELECT DISTINCT to_char(date_, 'Mon')
-               FROM ready_timetable"""
+    if type_name is None:
+        """Если не указан тип - группа/преподаватель"""
+        query = "SELECT DISTINCT to_char(date_, 'Mon') FROM ready_timetable"
+
+    elif name_id is not None:
+        query = """SELECT DISTINCT to_char(date_, 'Mon')
+                       FROM ready_timetable
+                       WHERE {0}_id = {1}
+                       """.format(type_name, name_id)
+    else:
+        return []
+
     cursor.execute(query)
     return concert_fetchall_to_list(cursor.fetchall())
 
 
 @check_none
-def fresh_ready_timetable_date(type_name: str = None, name_id: int = None):
+def fresh_ready_timetable_date(type_name: str = None,
+                               name_id: int = None,
+                               type_date: str = 'datetime'):
     """Получить дату актуального расписания по типу профиля и id"""
+    date_column = "date_"
+    if type_date == 'string':
+        date_column = "to_char(date_, 'DD.MM.YYYY')"
+
     where_add = "True"
     if type_name is not None and name_id is not None:
         where_add = f"{type_name}_id = {name_id}"
 
-    query = """SELECT to_char(date_, 'DD.MM.YYYY')
+    query = """SELECT {0}
                FROM ready_timetable
-               WHERE {0}
+               WHERE {1}
                ORDER BY date_ DESC
                LIMIT 1
-               """.format(where_add)
+               """.format(date_column,
+                          where_add)
     cursor.execute(query)
     return cursor.fetchone()
 
@@ -504,11 +587,13 @@ def count_all_users_by_dates(table_name: str = "telegram"):
     return cursor.fetchall()
 
 
+'''
 def user_ids_vk_by_sync_code(sync_code: int):
     """Получить user_id_vk с определённым sync_code"""
     query = "SELECT * FROM vkontakte WHERE sync_code = {0} AND spamming".format(sync_code)
     cursor.execute(query)
     return concert_fetchall_to_list(cursor.fetchall())
+'''
 
 
 def lesson_names_from_ready_timetable_info():

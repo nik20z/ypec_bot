@@ -39,17 +39,45 @@ view_create_queries = {
                                     LEFT JOIN group_ ON ready_timetable.group__id = group_.group__id
                                     LEFT JOIN lesson ON ready_timetable.lesson_name_id = lesson.lesson_id 
                                     LEFT JOIN teacher ON ready_timetable.teacher_id = teacher.teacher_id 
-                                    LEFT JOIN audience ON ready_timetable.audience_id = audience.audience_id;"""
+                                    LEFT JOIN audience ON ready_timetable.audience_id = audience.audience_id;""",
+
+    "practice_info": """CREATE OR REPLACE VIEW practice_info AS
+                                    SELECT group__name,
+                                           lesson_name,
+                                           teacher_name,
+                                           audience_name,
+                                           start_date,
+                                           stop_date
+                                    FROM practice
+                                    LEFT JOIN group_ ON practice.group__id = group_.group__id
+                                    LEFT JOIN lesson ON practice.lesson_name_id = lesson.lesson_id 
+                                    LEFT JOIN teacher ON practice.teacher_id = teacher.teacher_id 
+                                    LEFT JOIN audience ON practice.audience_id = audience.audience_id;""",
+
+    "dpo_info": """CREATE OR REPLACE VIEW dpo_info AS
+                                    SELECT group__name,
+                                           week_day_id,
+                                           num_lesson,
+                                           lesson_name,
+                                           teacher_name,
+                                           audience_name
+                                    FROM dpo
+                                    LEFT JOIN group_ ON dpo.group__id = group_.group__id
+                                    LEFT JOIN lesson ON dpo.lesson_name_id = lesson.lesson_id 
+                                    LEFT JOIN teacher ON dpo.teacher_id = teacher.teacher_id 
+                                    LEFT JOIN audience ON dpo.audience_id = audience.audience_id;"""
 }
 
 table_create_queries = {
     "group_": """CREATE TABLE IF NOT EXISTS group_ (
                                         group__id smallserial NOT NULL PRIMARY KEY,
-                                        group__name varchar(10) NOT NULL UNIQUE);""",
+                                        group__name varchar(10) NOT NULL UNIQUE,
+                                        department smallint);""",
 
     "teacher": """CREATE TABLE IF NOT EXISTS teacher (
                                         teacher_id smallserial NOT NULL PRIMARY KEY,
-                                        teacher_name varchar(35) NOT NULL UNIQUE);""",
+                                        teacher_name varchar(35) NOT NULL UNIQUE,
+                                        gender boolean);""",
 
     "lesson": """CREATE TABLE IF NOT EXISTS lesson (
                                         lesson_id smallserial NOT NULL PRIMARY KEY,
@@ -64,6 +92,14 @@ table_create_queries = {
                                         week_day_id smallint,
                                         num_lesson varchar(10),
                                         lesson_type boolean,
+                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
+                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        audience_id smallint REFERENCES audience (audience_id));""",
+
+    "dpo": """CREATE TABLE IF NOT EXISTS dpo (
+                                        group__id smallint REFERENCES group_ (group__id),
+                                        week_day_id smallint,
+                                        num_lesson varchar(10),
                                         lesson_name_id smallint REFERENCES lesson (lesson_id),
                                         teacher_id smallint REFERENCES teacher (teacher_id),
                                         audience_id smallint REFERENCES audience (audience_id));""",
@@ -86,6 +122,14 @@ table_create_queries = {
                                         teacher_id smallint REFERENCES teacher (teacher_id),
                                         audience_id smallint REFERENCES audience (audience_id));""",
 
+    "practice": """CREATE TABLE IF NOT EXISTS practice (
+                                        group__id smallint REFERENCES group_ (group__id) NOT NULL PRIMARY KEY,
+                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
+                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        audience_id smallint REFERENCES audience (audience_id),
+                                        start_date date,
+                                        stop_date date);""",
+
     "telegram": """CREATE TABLE IF NOT EXISTS telegram (
                                         user_id bigint NOT NULL PRIMARY KEY,
                                         user_name text,
@@ -99,8 +143,10 @@ table_create_queries = {
                                         spamming boolean DEFAULT True,
                                         pin_msg boolean DEFAULT True, 
                                         view_name boolean DEFAULT True, 
+                                        view_week_day boolean DEFAULT False,
                                         view_add boolean DEFAULT True, 
                                         view_time boolean DEFAULT False,
+                                        view_dpo_info boolean DEFAULT False,
                                         ban boolean DEFAULT False,
                                         number_bans smallint DEFAULT 0,
                                         timeout_ban timestamp without time zone,
@@ -144,7 +190,7 @@ table_create_queries = {
 }
 
 
-def drop(table_name=None, cascade_state=False):
+def drop(table_name: str = None, cascade_state: bool = False):
     """Удаляем таблицу"""
     if table_name is None:
         for table_name in table_create_queries.keys():
@@ -154,7 +200,7 @@ def drop(table_name=None, cascade_state=False):
     connection.commit()
 
 
-def create(table_name=None):
+def create(table_name: str = None):
     """Создаём таблицу"""
     if table_name is None:
         for table_name in table_create_queries.keys():
@@ -164,7 +210,7 @@ def create(table_name=None):
         connection.commit()
 
 
-def create_view(view_name=None):
+def create_view(view_name: str = None):
     """Создаём представление"""
     if view_name is None:
         for view_name in view_create_queries.keys():
@@ -174,7 +220,7 @@ def create_view(view_name=None):
         connection.commit()
 
 
-def delete(table_name=None):
+def delete(table_name: str = None):
     """Удаляем все данные из таблицы"""
     if table_name is None:
         for table_name in table_create_queries.keys():

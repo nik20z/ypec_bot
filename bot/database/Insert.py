@@ -28,8 +28,7 @@ def main_timetable(data: list):
     connection.commit()
 
 
-def replacement(data: list,
-                table_name: str = "replacement"):
+def replacement(data: list, table_name: str = "replacement"):
     """Занести данные о заменах"""
     query = """INSERT INTO {0}
                     (group__id,
@@ -43,6 +42,35 @@ def replacement(data: list,
                            Select.query_info_by_name('group_', default_method=True),
                            Select.query_info_by_name('teacher'),
                            Select.query_info_by_name('audience', default_method=True))
+    cursor.executemany(query, data)
+    connection.commit()
+
+
+def practice(data: list):
+    """Занести данные о практике"""
+    query = """INSERT INTO practice
+                            (group__id,
+                             lesson_name_id,
+                             teacher_id,
+                             audience_id,
+                             start_date,
+                             stop_date)
+                        VALUES ({0},{1},{2},{3},%s,%s)
+                        ON CONFLICT (group__id) DO UPDATE
+                        SET (lesson_name_id, 
+                             teacher_id, 
+                             audience_id, 
+                             start_date, 
+                             stop_date) 
+                        = (EXCLUDED.lesson_name_id, 
+                           EXCLUDED.teacher_id, 
+                           EXCLUDED.audience_id, 
+                           EXCLUDED.start_date, 
+                           EXCLUDED.stop_date)
+                        """.format(Select.query_info_by_name('group_', default_method=True),
+                                   Select.query_info_by_name('lesson', similari_value=0.8),
+                                   Select.query_info_by_name('teacher'),
+                                   Select.query_info_by_name('audience', default_method=True))
     cursor.executemany(query, data)
     connection.commit()
 
