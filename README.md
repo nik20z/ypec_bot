@@ -40,7 +40,7 @@
 - [ ] Создание анти-спам системы, которая будет блокировать спамеров
 
 
-## Порядок установки на VPS
+## Порядок установки на VPS (Ubuntu 20.04.3 LTS)
 
 ```
 sudo adduser ypec
@@ -106,11 +106,11 @@ pip3 install vkbottle
 ```
 
 Вносим правки в файл /bot/misc/env.py
-1. TG_TOKEN
+1. TG_TOKEN - получаем через Bot Father
 2. VK_TOKEN
 3. VK_TOKEN_VERSION
 4. VK_BOT_ID
-5. SETTINGS
+5. SETTINGS - настройки доступа к БД
 
 
 Перед созданием службы, перезапускающей скрипт, необходимо в папку /etc/systemd/system поместить файл ypec_bot.service
