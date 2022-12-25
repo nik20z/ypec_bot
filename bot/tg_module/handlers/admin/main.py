@@ -14,6 +14,7 @@ from bot.tg_module import answers
 from bot.database import Insert
 # from bot.database import Update
 from bot.database import Select
+from bot.database import Table
 from bot.database import Delete
 
 from bot.parse.functions import get_rub_balance
@@ -59,7 +60,7 @@ async def mailing_start(message: Message):
                 await message.bot.send_message(user_id, text=sending_message)
                 count_success += 1
             except Exception as e:
-                await message.bot.send_message(GOD_ID_TG, text=f"{e}")
+                await message.bot.send_message(GOD_ID_TG, text=f"{e} | {user_id}")
 
         text = f"Успешно: {count_success}\n" \
                f"Неудачно: {count - count_success}\n" \
@@ -90,6 +91,7 @@ async def get_main_timetable(message: Message):
     th = TimetableHandler()
 
     if message_args_split == ['ALL']:
+        Table.delete('main_timetable')
         await th.get_main_timetable(type_name='group_', names=[])
 
     elif message_args_split == ['']:
