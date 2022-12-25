@@ -112,6 +112,14 @@ pip3 install -r requirements.txt
 4. VK_BOT_ID
 5. SETTINGS - настройки доступа к БД
 
+Добавляем свой id в vkontakte в файл /bot/vk_module/config.py (если, не знаете, где найти: [тык](https://vk.com/faq18062) и [тык](https://regvk.com/id))
+1. GOD_ID_VK - главный админ
+2. ADMINS_VK - список всех админов
+
+Добавляем свой id в telegram в файл /bot/tg_module/config.py (можно узнать через [бота](https://t.me/getmyid_bot))
+1. GOD_ID_TG - главный админ
+2. ADMINS_TG - список всех админов
+
 
 Перед созданием службы, перезапускающей скрипт, необходимо в папку /etc/systemd/system поместить файл ypec_bot.service
 ```
@@ -134,6 +142,9 @@ sudo timedatectl set-timezone Europe/Moscow
 sudo apt-get install libpq-dev
 sudo apt-get install python-dev
 ```
+
+## Для администрирования
+Для установки бота на сервер и настройки советую использовать [PuTTY](https://www.putty.org). А также [WinSCP](https://winscp.net/eng/download.php) для удобного взаиможействия с файлами проекта
 
 
 <p align="center">
