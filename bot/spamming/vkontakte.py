@@ -90,7 +90,7 @@ class SpammingHandlerVkontakte:
     def get_spam_ids(self, table_name: str):
         """Получить список id групп/преподавателей, подлежащих рассылке"""
         if self.get_all_ids:
-            return Select.all_info(table_name=table_name, column_name=f"{table_name}_id")
+            return Select.names_for_spamming(table_name)
         return Select.names_rep_different(table_name)
 
     async def send_spam_message(self, user_id: int, text: str):

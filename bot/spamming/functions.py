@@ -46,7 +46,9 @@ def get_next_check_time(array_times: list, func_name: str):
 
     now = datetime.now()
     week_day_id = now.weekday()
-    type_week_day = "saturday" if week_day_id == 5 else "weekday"
+    type_week_day = "weekday"
+    if week_day_id == 5:
+        type_week_day = "saturday"
 
     for t in array_times[func_name][type_week_day]:
         now = datetime.now()

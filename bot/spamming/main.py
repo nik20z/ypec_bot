@@ -29,22 +29,22 @@ async def check_replacement(day: str = "tomorrow"):
     rep_result = await th.get_replacement(day=day)
 
     if rep_result != "NO":
-        """Если замены отсутствуют, то чистим таблицы"""
+        """Если есть замены, то чистим таблицы"""
+        await dp.bot.send_message(chat_id=GOD_ID_TG, text=rep_result)
         Delete.ready_timetable_by_date(th.date_replacement)
 
         th.get_ready_timetable(date_=th.date_replacement,
                                lesson_type=th.week_lesson_type)
 
-        if rep_result == "NEW":
-            Insert.time_replacement_appearance()
-            await dp.bot.send_message(chat_id=GOD_ID_TG, text='NEW')
-            await SpammingHandlerTelegram(th.date_replacement, get_all_ids=True).start()
-            await SpammingHandlerVkontakte(th.date_replacement, get_all_ids=True).start()
+        get_all_ids = False
 
-        elif rep_result == "UPDATE":
-            await dp.bot.send_message(chat_id=GOD_ID_TG, text='UPDATE')
-            await SpammingHandlerTelegram(th.date_replacement).start()
-            await SpammingHandlerVkontakte(th.date_replacement).start()
+        if rep_result == "NEW":
+            """Если новое расписание, то заносим время появления и перебираем все id групп/преподавателей"""
+            Insert.time_replacement_appearance()
+            get_all_ids = True
+
+        await SpammingHandlerTelegram(th.date_replacement, get_all_ids=get_all_ids).start()
+        await SpammingHandlerVkontakte(th.date_replacement, get_all_ids=get_all_ids).start()
 
     Table.delete('replacement_temp')
     Insert.replacement(th.rep.data, table_name="replacement_temp")
