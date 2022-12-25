@@ -9,6 +9,7 @@ from .util import get_condition_smile
 from bot.misc import Communicate
 from bot.misc import Donate
 from bot.functions import month_translate
+from bot.functions import get_day_week_by_id
 # from bot.functions import week_day_translate
 
 
@@ -90,8 +91,8 @@ def user_settings(user_settings_data: list,
     short_type_name = {'group_': 'g', 'teacher': 't'}.get(type_name)
 
     main_subscribe_btn = Callback(f"⭐ {name_}", {"cmd": f"s {short_type_name}c {name_id}"})
-    groups_list_btn = Callback('Группы 👨‍🎓', {"cmd": "s g_list 0"})
-    teacher_list_btn = Callback('Преподаватели 👨‍🏫', {"cmd": "s t_list 0"})
+    groups_list_btn = Callback('👨🏻‍🎓 Группы 👩🏻‍🎓', {"cmd": "s g_list 0"})
+    teacher_list_btn = Callback('👨🏻‍🏫 Преподаватели 👩🏻‍🏫', {"cmd": "s t_list 0"})
     main_settings_btn = Callback("⚙", {"cmd": f"s ms"})
     support_btn = Callback("Поддержать", {"cmd": f"s support"})
 
@@ -135,8 +136,10 @@ def main_settings(user_settings_data: list):
     spamming = user_settings_data[5]
     # pin_msg = user_settings_data[6]
     view_name = user_settings_data[7]
-    view_add = user_settings_data[8]
-    view_time = user_settings_data[9]
+    # view_week_day = user_settings_data[8]
+    view_add = user_settings_data[9]
+    view_time = user_settings_data[10]
+    # view_dpo_info = user_settings_data[11]
 
     button_info = {'spamming': ['🔔 Рассылка', spamming],
                    'view_name': ['Заголовок', view_name],
@@ -211,11 +214,14 @@ def group__card(group__user_info: list,
 
     # group__id = group__user_info[0]
     group__name = group__user_info[1]
-    main_subscribe = group__user_info[2]
-    # subscribe_state = group__user_info[3]
-    # spam_state = group__user_info[4]
+    department = group__user_info[2]
+    # dpo_state = group__user_info[3]
+    main_subscribe = group__user_info[4]
+    # subscribe_state = group__user_info[4]
+    # spam_state = group__user_info[5]
 
-    group__name_btn = Callback(group__name, {"cmd": f"* {group__name}"})
+    department_smile = {0: '💰', 1: '🧪', 2: '🛠️'}.get(department, '')  # 💸
+    group__name_btn = Callback(f"{department_smile} {group__name} {department_smile}", {"cmd": f"* {group__name}"})
 
     week_days_main_timetable_btn = Callback("Неделя", {"cmd": f"{callback_data} wdmt"})
     history_ready_timetable_btn = Callback("История", {"cmd": f"{callback_data} mhrt"})
@@ -254,11 +260,14 @@ def teacher_card(teacher_user_info: tuple,
 
     teacher_id = teacher_user_info[0]
     teacher_name = teacher_user_info[1]
-    main_subscribe = teacher_user_info[2]
-    #subscribe_state = teacher_user_info[3]
-    #spam_state = teacher_user_info[4]
+    gender = teacher_user_info[2]
+    # dpo_state = teacher_user_info[3]
+    main_subscribe = teacher_user_info[3]
+    # subscribe_state = teacher_user_info[4]
+    # spam_state = teacher_user_info[5]
 
-    teacher_name_btn = Callback(teacher_name, {"cmd": f"* {teacher_name}"})
+    gender_smile = '' if gender is None else '👨🏻‍🏫 ' if gender else '👩🏻‍🏫 '
+    teacher_name_btn = Callback(f"{gender_smile}{teacher_name}", {"cmd": f"* {teacher_name}"})
 
     week_days_main_timetable_btn = Callback("Неделя", {"cmd": f"{callback_data} wdmt"})
     history_ready_timetable_btn = Callback("История", {"cmd": f"{callback_data} mhrt"})
@@ -292,7 +301,8 @@ def teacher_card(teacher_user_info: tuple,
     return keyboard
 
 
-def week_days_main_timetable(callback_data,
+def week_days_main_timetable(week_days_id_main_timetable_array: list,
+                             callback_data,
                              current_week_day_id: int = None,
                              last_callback_data: str = None,
                              row_width: int = 2):
@@ -303,23 +313,14 @@ def week_days_main_timetable(callback_data,
     keyboard.add(get_main_timetable_btn)
     keyboard.row()
 
-    days_week = {'Понедельник': 0,
-                 'Вторник': 1,
-                 'Среда': 2,
-                 'Четверг': 3,
-                 'Пятница': 4,
-                 'Суббота': 5
-                 }
+    for week_days_row in split_array(week_days_id_main_timetable_array, row_width):
+        for week_day_id in week_days_row:
+            week_day_text = get_day_week_by_id(week_day_id)
 
-    for week_days_row in split_array(list(days_week.keys()), row_width):
-        for week_day in week_days_row:
-            week_day_text_btn = week_day
-            id_ = days_week[week_day]
+            if week_day_id == current_week_day_id:
+                week_day_text = f"🟢 {week_day_text}"
 
-            if id_ == current_week_day_id:
-                week_day_text_btn = f"🟢 {week_day}"
-
-            week_day_btn = Callback(week_day_text_btn, {"cmd": f"{callback_data} {id_}"})
+            week_day_btn = Callback(week_day_text, {"cmd": f"{callback_data} {week_day_id}"})
             keyboard.add(week_day_btn)
 
         keyboard.row()
