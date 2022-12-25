@@ -19,6 +19,7 @@ def get_callback_values(callback: CallbackQuery, last_ind: int):
     return callback_data_split, last_callback_data
 
 
+'''
 def get_sync_code(user_id: int):
     """Получаем sync_code из user_id"""
     sync_code = "#"
@@ -30,3 +31,4 @@ def get_sync_code(user_id: int):
     for i in str(user_id):
         sync_code += chr(int(i) + 65)
     return sync_code
+'''
