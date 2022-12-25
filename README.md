@@ -102,12 +102,12 @@ pip3 install vkbottle
 
 Альтернативный способ установки всех библиотек
 ```
-# pip3 install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 Вносим правки в файл /bot/misc/env.py
 1. TG_TOKEN - получаем через Bot Father
-2. VK_TOKEN
+2. VK_TOKEN - получаем в настройках группы (ставим все галочки при колучении токена)
 3. VK_TOKEN_VERSION
 4. VK_BOT_ID
 5. SETTINGS - настройки доступа к БД
