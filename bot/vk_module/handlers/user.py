@@ -1,7 +1,6 @@
 import asyncio
 from datetime import datetime
 from io import BytesIO
-import random
 
 from vkbottle import BaseStateGroup
 from vkbottle import GroupEventType
@@ -37,7 +36,7 @@ from bot.message_timetable import MessageTimetable
 from bot.vk_module.config import ADMINS_VK
 from bot.vk_module.config import DEFAULT_LIMIT_SUBSCRIPTIONS
 
-from bot.misc import Keys
+# from bot.misc import Keys
 
 
 user_labeler = BotLabeler()
@@ -56,7 +55,7 @@ class UserStates(BaseStateGroup):
     choice_name = "choice_name"
 
 
-@user_labeler.private_message(CheckNewUser())
+@user_labeler.message(CheckNewUser())
 async def new_user(message: Message):
     """Обработчик для нового пользователя"""
     user_id = message.peer_id
@@ -323,8 +322,10 @@ async def timetable(message: Message):
     type_name = user_info[0]
     name_id = user_info[1]
     view_name = user_info[2]
-    view_add = user_info[3]
-    view_time = user_info[4]
+    # view_week_day = user_info[3]
+    view_add = user_info[4]
+    view_time = user_info[5]
+    # view_dpo_info = user_info[6]
 
     if type_name is None or name_id is None:
         """У пользователя нет основной подписки"""
@@ -334,6 +335,7 @@ async def timetable(message: Message):
     name_ = Select.name_by_id(type_name, name_id)
 
     date_ = Select.fresh_ready_timetable_date(type_name=type_name, name_id=name_id)
+    date_str = date_.strftime("%d.%m.%Y")
 
     if date_ is None:
         return await message.answer(AnswerText.no_exist_timetable(name_))
@@ -341,7 +343,7 @@ async def timetable(message: Message):
     data_ready_timetable = Select.ready_timetable(type_name, date_, name_)
 
     text = MessageTimetable(name_,
-                            date_,
+                            date_str,
                             data_ready_timetable,
                             view_name=view_name,
                             view_add=view_add,
@@ -525,8 +527,6 @@ async def spam_or_subscribe_name_id(event: MessageEvent, last_ind=-1):
                                    value=name_id,
                                    remove_=True)
 
-
-
     elif type_column_name in ("sp_gr", "sp_tch") and result:
 
         Update.user_settings_array(user_id,
@@ -669,10 +669,18 @@ async def lessons_list_by_teacher(event: MessageEvent, last_ind=-2):
 async def week_days_main_timetable(event: MessageEvent, last_ind=-1):
     """Показать список дней недели дня получения основного расписания"""
     user_id = event.object.peer_id
-    last_callback_data = get_callback_values(event, last_ind)[-1]
+    [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
+
+    type_name = column_name_by_callback.get(callback_data_split[-3])
+    name_id = int(callback_data_split[-2])
+    week_days_id_main_timetable_array = Select.week_days_timetable(type_name, name_id, "main_timetable")
+
+    if not week_days_id_main_timetable_array:
+        return await event.show_snackbar(text=AnswerCallback.not_week_days_main_timetable())
 
     text = AnswerText.week_days_main_timetable()
-    keyboard = Inline.week_days_main_timetable(current_week_day_id=datetime.now().weekday(),
+    keyboard = Inline.week_days_main_timetable(week_days_id_main_timetable_array,
+                                               current_week_day_id=datetime.now().weekday(),
                                                callback_data=event.payload['cmd'],
                                                last_callback_data=last_callback_data)
 
@@ -749,7 +757,8 @@ async def get_main_timetable_by_week_day_id(event: MessageEvent, last_ind: int =
                             date_week_day,
                             data_main_timetable,
                             start_text="Основное расписание на ",
-                            format_=False).get()
+                            mode="vkontakte",
+                            format_=True).get()
     keyboard = Inline.get_back_button(last_callback_data, return_keyboard=True)
 
     await event.edit_message(text, keyboard=keyboard)
@@ -777,11 +786,11 @@ async def view_ready_timetable(event: MessageEvent,
 
     if date_ is None:
         date_ = Select.fresh_ready_timetable_date(type_name=type_name, name_id=name_id)
-
         if date_ is None:
             """Расписание полностью отсутствует"""
             text = AnswerCallback.not_ready_timetable()
             return await event.show_snackbar(text)
+        date_ = date_.strftime("%d.%m.%Y")
 
     user_info = Select.user_info_by_column_names(user_id,
                                                  column_names=['view_add', 'view_time'],
@@ -972,7 +981,7 @@ async def help_message(message: Message):
     # logger.info(f"message {user_id}")
 
 
-@user_labeler.message(CommandRule("show_keyboard", ["!", "/"], 0))
+@user_labeler.message(CommandRule("keyboard", ["!", "/"], 0))
 async def show_keyboard(message: Message):
     """Показать клавиатуру"""
     user_id = message.peer_id
