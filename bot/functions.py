@@ -3,6 +3,31 @@ from datetime import datetime, date, timedelta
 from bot.config import CALL_SCHEDULE
 
 
+def get_day_week_by_id(week_day_id: int):
+    day_week_by_id = {0: 'Понедельник',
+                      1: 'Вторник',
+                      2: 'Среда',
+                      3: 'Четверг',
+                      4: 'Пятница',
+                      5: 'Суббота',
+                      6: 'Воскресенье'
+                      }
+    return day_week_by_id.get(week_day_id)
+
+
+def get_week_day_id_by_name(week_day_name: str):
+    """Получить id дня недели по названию"""
+    days_week = {'понедельник': 0,
+                 'вторник': 1,
+                 'среда': 2,
+                 'четверг': 3,
+                 'пятница': 4,
+                 'суббота': 5,
+                 'воскресенье': 6
+                 }
+    return days_week.get(week_day_name.lower(), None)
+
+
 def month_translate(month_name: str):
     """Перевести название месяца на русский язык"""
     month_d = {'jan': 'январь',
@@ -80,9 +105,12 @@ def get_day_text(date_: datetime = None,
     return (date_ + timedelta(days=days)).strftime(format_str)
 
 
-def get_week_day_id_by_date_(date_: str, format_str: str = "%d.%m.%Y"):
+def get_week_day_id_by_date_(date_, format_str: str = "%d.%m.%Y"):
     """Получить номер недели по дате"""
-    return datetime.strptime(date_, format_str).weekday()
+    try:
+        return datetime.strptime(date_, format_str).weekday()
+    except TypeError:
+        return date_.weekday()
 
 
 column_name_by_callback = {'sp_gr': 'spam_group_',
@@ -132,7 +160,9 @@ def get_time_for_timetable(date_str: str, num_lesson_array: list):
     start_time_text = get_time_text(start_time, "С {0}")
     stop_time_text = get_time_text(stop_time, "До {0}")
 
-    return f"{start_time_text} {stop_time_text}"
+    if start_time_text == "" and stop_time_text == "":
+        return ""
+    return f"{start_time_text} {stop_time_text}\n"
 
 
 def get_joined_text_by_list(array_: list, char_: str = ' / '):

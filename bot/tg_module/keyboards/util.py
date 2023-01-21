@@ -1,4 +1,6 @@
-from aiogram.types import KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import KeyboardButton
+from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup
 
 
 class Button:
@@ -7,17 +9,17 @@ class Button:
 
     def inline(self,
                callback_data: str,
-               url: str = None):
+               url: str = None) -> InlineKeyboardButton:
         return InlineKeyboardButton(text=self.text,
                                     callback_data=str(callback_data),
                                     url=url)
 
-    def reply(self, request_location=False):
+    def reply(self, request_location: bool = False) -> KeyboardButton:
         return KeyboardButton(text=self.text,
                               request_location=request_location)
 
 
-def get_condition_smile(bool_value: bool):
+def get_condition_smile(bool_value: bool) -> str:
     """Получить смайл состояния"""
     return '✅' if bool_value else '☑'
 

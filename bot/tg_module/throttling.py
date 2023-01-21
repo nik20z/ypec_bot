@@ -1,4 +1,5 @@
 import asyncio
+from typing import Callable
 
 from aiogram import Dispatcher
 from aiogram.dispatcher import DEFAULT_RATE_LIMIT
@@ -14,8 +15,8 @@ from bot.tg_module import answers
 AnswerText = answers.Text
 
 
-def rate_limit(limit: int, key=None):
-    def decorator(func):
+def rate_limit(limit: int, key=None) -> Callable:
+    def decorator(func) -> Callable:
         setattr(func, 'throttling_rate_limit', limit)
         if key:
             setattr(func, 'throttling_key', key)
@@ -26,12 +27,16 @@ def rate_limit(limit: int, key=None):
 
 class ThrottlingMiddleware(BaseMiddleware):
 
-    def __init__(self, limit=DEFAULT_RATE_LIMIT, key_prefix='antiflood_'):
+    def __init__(self,
+                 limit: int = DEFAULT_RATE_LIMIT,
+                 key_prefix: str = 'antiflood_'):
         self.rate_limit = limit
         self.prefix = key_prefix
         super(ThrottlingMiddleware, self).__init__()
 
-    async def on_process_message(self, message: Message, data: dict):
+    async def on_process_message(self,
+                                 message: Message,
+                                 data: dict) -> None:
 
         # Get current handler
         handler = current_handler.get()
@@ -56,7 +61,9 @@ class ThrottlingMiddleware(BaseMiddleware):
             # Cancel current handler
             raise CancelHandler()
 
-    async def message_throttled(self, message: Message, throttled: Throttled):
+    async def message_throttled(self,
+                                message: Message,
+                                throttled: Throttled) -> None:
 
         handler = current_handler.get()
         dispatcher = Dispatcher.get_current()

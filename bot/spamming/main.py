@@ -1,3 +1,4 @@
+import configparser
 from datetime import datetime
 
 # My Modules
@@ -17,8 +18,11 @@ from bot.vk_module.handlers.config import api
 AnswerText = answers.Text
 
 
-async def check_replacement(day: str = "tomorrow"):
+async def check_replacement(day: str = "tomorrow") -> None:
     """Функция для проверки наличия замен"""
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+
     th = TimetableHandler()
 
     await dp.bot.send_message(chat_id=GOD_ID_TG, text='Check Replacements')
@@ -43,8 +47,11 @@ async def check_replacement(day: str = "tomorrow"):
             Insert.time_replacement_appearance()
             get_all_ids = True
 
-        await SpammingHandlerTelegram(th.date_replacement, get_all_ids=get_all_ids).start()
-        await SpammingHandlerVkontakte(th.date_replacement, get_all_ids=get_all_ids).start()
+        if config['TG']['spamming'] == 'True':
+            await SpammingHandlerTelegram(th.date_replacement, get_all_ids=get_all_ids).start()
+
+        if config['VK']['spamming'] == 'True':
+            await SpammingHandlerVkontakte(th.date_replacement, get_all_ids=get_all_ids).start()
 
     Table.delete('replacement_temp')
     Insert.replacement(th.rep.data, table_name="replacement_temp")

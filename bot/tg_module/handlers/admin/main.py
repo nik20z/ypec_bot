@@ -1,3 +1,4 @@
+import configparser
 import sys
 import time
 
@@ -20,25 +21,26 @@ from bot.database import Delete
 from bot.parse.functions import get_rub_balance
 
 from bot.parse import TimetableHandler
+from bot.parse import Dpo
 # from bot.spamming import check_replacement
 
 
 AnswerText = answers.Text
 
 
-async def help_admin(message: Message):
+async def help_admin(message: Message) -> None:
     """Вывести help-сообщение"""
     await message.answer(AnswerText.help_admin())
 
 
-async def get_user_link(message: Message):
+async def get_user_link(message: Message) -> None:
     """Получить ссылку на пользователя"""
     user_id_array = message.get_args().split()
     text = '\n'.join([f"<a href='tg://user?id={user_id}'>{user_id}</a>" for user_id in user_id_array])
     await message.answer(text)
 
 
-async def mailing_test_start(message: Message):
+async def mailing_test_start(message: Message) -> None:
     """Тест рассылки"""
     try:
         await message.bot.send_message(GOD_ID_TG, text=message.get_args())
@@ -46,7 +48,7 @@ async def mailing_test_start(message: Message):
         await message.bot.send_message(GOD_ID_TG, text="MessageTextIsEmpty")
 
 
-async def mailing_start(message: Message):
+async def mailing_start(message: Message) -> None:
     """Рассылка сообщений """
     count = 0
     count_success = 0
@@ -71,19 +73,19 @@ async def mailing_start(message: Message):
         await message.bot.send_message(GOD_ID_TG, text="MessageTextIsEmpty")
 
 
-async def delete_user(message: Message):
+async def delete_user(message: Message) -> None:
     """Удаляем себя из таблицы telegram"""
     Delete.user(message.chat.id)
 
 
-async def set_future_updates(message: Message):
+async def set_future_updates(message: Message) -> None:
     """Установить список ошибок и планы на обновления"""
     text = message.get_args()
     Insert.config("future_updates", text)
     await message.answer(text)
 
 
-async def get_main_timetable(message: Message):
+async def get_main_timetable(message: Message) -> None:
     """Парсим основное расписание"""
     t = time.time()
     message_args_split = message.get_args().split(',')
@@ -121,12 +123,19 @@ async def get_main_timetable(message: Message):
             if names_array:
                 await th.get_main_timetable(type_name=type_name, names=names_array)
 
-    await message.answer(f"Основное расписание получено за {round(time.time() - t)}")
+        await message.answer(f"Основное расписание получено за {round(time.time() - t)}")
 
 
-async def update_balance(message: Message):
+async def get_dpo(message: Message) -> None:
+    """Перенести данные о ДПО из файла в БД"""
+    dpo_obj = Dpo()
+    dpo_obj.parse()
+    await message.answer('Данные о ДПО перенесены из файла в БД')
+
+
+async def update_balance(message: Message) -> None:
     """Обновляем данные о балансе Qiwi-кошелька"""
-    rub_balance = get_rub_balance()
+    rub_balance = str(get_rub_balance())
     Insert.config('rub_balance', rub_balance)
 
     await message.answer(f"Баланс Qiwi-кошелька обновлён: {rub_balance} ₽")
@@ -138,39 +147,78 @@ async def update_timetable(message: Message):
     pass
 
 
-async def restart_bot(message: Message):
+async def restart_bot(message: Message) -> None:
     """Перезапускаем бота"""
     await message.answer("restart_bot")
     sys.exit()
 
 
-async def info_log(message: Message):
+async def info_log(message: Message) -> None:
     """Получить лог"""
     user_id = message.chat.id
     await message.bot.send_document(user_id, open("bot/log/info.log"))
 
 
-async def create_statistics(message: Message):
+async def create_statistics(message: Message) -> None:
     """Создание отчета"""
+    # Топ 10 подписок
     text = "Топ 10 подписок\n"
     for data_ in Select.count_subscribe_by_type_name("group_")[:10]:
         [name_, count_subscribe] = data_
         text += f"{name_[0]} {count_subscribe}\n"
 
-    """
-    text += "\nГрафик роста аудитории\n"
+    text += '\n'
+
+    # График роста аудитории по дням
+    text += "График роста аудитории\n"
     for data_ in Select.count_all_users_by_dates():
         [joined, count_subscribe] = data_
         text += f"{joined[0].strftime('%d.%m.%Y')} {count_subscribe}\n"
-    """
+    text += '\n'
 
-    text += f"\nВсего юзеров: {Select.count_row_by_table_name('telegram')}"
+    # Подсчёт количества юзеров по категориям
+    text += f"Получают рассылку: {len(Select.query_('SELECT user_id FROM telegram WHERE spamming'))}\n"
+    text += f"Заблокали бота: {len(Select.query_('SELECT user_id FROM telegram WHERE bot_blocked'))}\n"
+    text += f"Студентов: {len(Select.query_('SELECT user_id FROM telegram WHERE type_name AND NOT bot_blocked'))}\n"
+    text += f"Преподов: {len(Select.query_('SELECT user_id FROM telegram WHERE NOT type_name AND NOT bot_blocked'))}\n"
+    text += f"Всего юзеров: {Select.count_row_by_table_name('telegram')}"
 
     await message.answer(text)
 
 
+async def test(message: Message) -> None:
+    """Тестовая фунция"""
+    '''
+    import asyncio
+    loop = asyncio.get_event_loop()
+    pending = asyncio.all_tasks(loop=loop)
+    for task in pending:
+        print(task)
+        coroutine_name = task.get_coro()
+        print(str(coroutine_name))
+        print()
+    '''
+
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+
+    text = 'Настройки бота:\n'
+
+    for section in config.sections():
+        text += f"[{section}]\n"
+
+        for one_param in config[section]:
+            text += f"  {one_param}: {config[section][one_param]}\n"
+
+    await message.answer(text, disable_web_page_preview=True)
+
+
 def register_admin_handlers(dp: Dispatcher):
     # todo: register all admin handlers
+
+    dp.register_message_handler(test,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['test'])
 
     dp.register_message_handler(help_admin,
                                 IDFilter(chat_id=ADMINS_TG),
@@ -199,6 +247,10 @@ def register_admin_handlers(dp: Dispatcher):
     dp.register_message_handler(get_main_timetable,
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['get_main_timetable'])
+
+    dp.register_message_handler(get_dpo,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['get_dpo'])
 
     dp.register_message_handler(update_balance,
                                 IDFilter(chat_id=ADMINS_TG),

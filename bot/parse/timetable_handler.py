@@ -1,3 +1,5 @@
+import configparser
+
 from bot.database import Delete
 from bot.database import Insert
 from bot.database import Select
@@ -6,6 +8,7 @@ from bot.database import Table
 from bot.functions import get_day_text
 from bot.functions import get_week_day_id_by_date_
 
+from bot.parse.functions import combine_teacher_names_and_audience_arrays
 from bot.parse.functions import convert_timetable_to_dict
 from bot.parse.functions import convert_lesson_name
 
@@ -36,7 +39,9 @@ class TimetableHandler:
         """
 
     def __init__(self):
-        self.method = "async"
+        self.config = configparser.ConfigParser()
+        self.config.read("config.ini")
+
         self.ready_timetable_data = []
         self.date_replacement = get_day_text(days=1)
         self.week_lesson_type = get_week_day_id_by_date_(self.date_replacement)
@@ -56,9 +61,12 @@ class TimetableHandler:
 
         self.lesson_names = set()
 
+        self.method = self.config['PARSE']['main_method']
+        self.parse_table_replacement_mode = self.config['PARSE']['table_replacement_mode']
+
     async def get_main_timetable(self,
                                  type_name: str = None,
-                                 names: list = None):
+                                 names: list = None) -> None:
         """Получаем основное расписание"""
         if names is None:
             names = []
@@ -78,7 +86,7 @@ class TimetableHandler:
             Delete.main_timetable(type_name, name_id)
         Insert.main_timetable(self.mt.data)
 
-    async def get_replacement(self, day: str = "tomorrow"):
+    async def get_replacement(self, day: str = "tomorrow") -> str:
         """Получаем замены"""
         self.rep.group__names = self.group__names
 
@@ -104,18 +112,17 @@ class TimetableHandler:
             Insert.replacement(self.rep.data)
             return "NEW"
 
-        else:
-            # если замены есть, то перезаписываем их
-            Table.delete('replacement')
-            Insert.replacement(self.rep.data)
+        # если замены есть, то перезаписываем их
+        Table.delete('replacement')
+        Insert.replacement(self.rep.data)
 
-            return "UPDATE"
+        return "UPDATE"
 
     def get_ready_timetable(self,
                             date_: str = None,
                             type_name: str = 'group_',
                             names_array: list = None,
-                            lesson_type: bool = True):
+                            lesson_type: bool = True) -> None:
         """Получаем готовое расписание
         :param date_: дата, для которой будет составлено расписание
         :param type_name: тип профиля
@@ -142,7 +149,7 @@ class TimetableHandler:
 
         Insert.ready_timetable(self.ready_timetable_data)
 
-    def get_names_array_by_type_name(self, type_name: str):
+    def get_names_array_by_type_name(self, type_name: str) -> list:
         """Получить массив наименований по пиру профиля"""
         if type_name == 'group_':
             return self.group__names
@@ -150,12 +157,14 @@ class TimetableHandler:
         elif type_name == 'teacher':
             return self.teacher_names
 
+        return []
+
     def replacements_join_timetable(self,
                                     date_: str = None,
                                     type_name: str = 'group_',
                                     names_array: list = None,
                                     week_day_id: int = 0,
-                                    lesson_type: bool = True):
+                                    lesson_type: bool = True) -> None:
         """
         Соединяем замены с основным расписанием
         :param date_: дата, для которой будет составлено расписание
@@ -182,6 +191,9 @@ class TimetableHandler:
             replacement = Select.replacement(type_name, name_)
 
             timetable_dict = convert_timetable_to_dict(timetable)
+
+            if self.parse_table_replacement_mode == "only_rep":
+                timetable_dict.clear()
 
             last_num_lesson = None
 
@@ -268,6 +280,9 @@ class TimetableHandler:
                         else:
                             """Обработчик ---остальные случаи---"""
 
+                            if self.parse_table_replacement_mode == "only_rep":
+                                replace_for_lesson = lesson_by_main_timetable
+
                             new_lesson_info = [replace_for_lesson, [rep_name], rep_audience_array]
 
                             if last_num_lesson == num_lesson:
@@ -300,24 +315,24 @@ class TimetableHandler:
     def filling_ready_timetable_data(self,
                                      date_: str,
                                      name_: str,
-                                     timetable_dict: dict):
+                                     timetable_dict: dict) -> None:
         """Заполняем массив self.ready_timetable_data и кортеж lesson_names"""
         for num_lesson, lessons_array in timetable_dict.items():
 
             for one_lesson in lessons_array:
                 lesson_name = one_lesson[0]
-                teacher_name_array = one_lesson[1]
+                teacher_names_array = one_lesson[1]
                 audience_array = one_lesson[2]
 
-                for teacher_name in teacher_name_array:
-                    ind = teacher_name_array.index(teacher_name)
+                [teacher_names_array, audience_array] = combine_teacher_names_and_audience_arrays(teacher_names_array, audience_array)
 
-                    # Необходимо явно вычислять индекс
-                    if len(audience_array) == 1:
-                        ind = 0
+                ind = 0
+                for teacher_name in teacher_names_array:
                     audience = audience_array[ind]
 
                     data_one_lesson = (date_, name_, num_lesson, lesson_name, teacher_name, audience)
 
                     self.lesson_names.add(lesson_name)
                     self.ready_timetable_data.append(data_one_lesson)
+
+                    ind += 1

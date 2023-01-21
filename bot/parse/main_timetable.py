@@ -1,28 +1,17 @@
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
+import configparser
 import requests
+
+from bot.functions import get_week_day_id_by_name
 
 from bot.parse.functions import get_full_link_by_part
 from bot.parse.functions import get_correct_audience
-from bot.parse.functions import convert_lesson_name
+from bot.parse.functions import get_lesson_teacher_group_names
 
 from bot.parse.config import main_link_ypec
 from bot.parse.config import headers_ypec
-
-
-def get_lesson_teacher_group_names(type_name: str, one_lesson: list):
-    """Получить данные о паре и группе/преподавателях"""
-    if type_name == 'teacher':
-        lesson_name = one_lesson[-2]
-        teacher_or_group_name_split = [one_lesson[-3]]
-    else:
-        lesson_name = one_lesson[-3]
-        teacher_or_group_name_split = one_lesson[-2].split('/')
-
-    lesson_name = convert_lesson_name(lesson_name)
-
-    return lesson_name, teacher_or_group_name_split
 
 
 class MainTimetable:
@@ -44,14 +33,8 @@ class MainTimetable:
         """
 
     def __init__(self):
-        self.days_week = {'понедельник': 0,
-                          'вторник': 1,
-                          'среда': 2,
-                          'четверг': 3,
-                          'пятница': 4,
-                          'суббота': 5,
-                          'воскресенье': 6
-                          }
+        self.config = configparser.ConfigParser()
+        self.config.read("config.ini")
 
         self.get_lesson_type = lambda td: {'dfdfdf': True, 'a3a5a4': False}.get(td.get('bgcolor'), None)
 
@@ -64,12 +47,12 @@ class MainTimetable:
         self.audience_names = set()
 
         self.get_array_names_by_type_name()
-        self.method = "async"
+        self.method = self.config['PARSE']['main_method']
         self.session = None
 
     def get_data_post(self,
                       type_name: str,
-                      name_: str):
+                      name_: str) -> dict:
         """Формирование data для запроса страницы с расписанием"""
         data_name_ = name_
 
@@ -81,7 +64,7 @@ class MainTimetable:
         data_post = {short_type_name: data_name_}
         return data_post
 
-    def get_array_names_by_type_name(self, type_name: str = None):
+    def get_array_names_by_type_name(self, type_name: str = None) -> list:
         """Получить массив с названиями групп или ФИО преподавателей"""
         if type_name is None:
             for type_name in self.type_names:
@@ -105,14 +88,14 @@ class MainTimetable:
 
     def get_info_by_type_name(self,
                               type_name: str,
-                              get_: str = 'part_link'):
+                              get_: str = 'part_link') -> str:
         """Получить по типу профиля информацию:"""
         data_by_type_name = {'group_': ['rasp-s', 'grp', self.group__names],
                              'teacher': ['rasp-sp', 'prep1', self.teacher_names]}
         ind = ['part_link', 'short_type_name', 'array_names'].index(get_)
         return data_by_type_name[type_name][ind]
 
-    def create_session(self):
+    def create_session(self) -> None:
         if self.method == "async":
             self.session = aiohttp.ClientSession()
         else:
@@ -120,7 +103,7 @@ class MainTimetable:
 
     async def get_soup(self,
                        url: str,
-                       data_post: dict):
+                       data_post: dict) -> BeautifulSoup:
         if self.method == "async":
             response = await self.session.post(url, data=data_post, headers=headers_ypec)
             return BeautifulSoup(await response.text(), 'lxml')
@@ -128,7 +111,7 @@ class MainTimetable:
             response = self.session.post(url, data=data_post, headers=headers_ypec)
             return BeautifulSoup(response.text, 'lxml')
 
-    async def close_session(self):
+    async def close_session(self) -> None:
         if self.method == "async":
             await self.session.close()
         else:
@@ -136,7 +119,7 @@ class MainTimetable:
 
     async def parse(self,
                     type_name: str = None,
-                    names: list = None):
+                    names: list = None) -> None:
         """Парсим основное расписание"""
         if names is None:
             names = []
@@ -169,7 +152,7 @@ class MainTimetable:
     def table_handler(self,
                       soup: BeautifulSoup,
                       type_name: str,
-                      name_: str):
+                      name_: str) -> None:
         """Обрабатываем таблицу с расписанием и заносим данные в self.data
 
             Параметры:
@@ -195,7 +178,7 @@ class MainTimetable:
 
             if not tr.get("class") is None:
                 maybe_week_day = one_td_array[0].text.strip().lower()
-                week_day_id = self.days_week.get(maybe_week_day, None)
+                week_day_id = get_week_day_id_by_name(maybe_week_day)
                 one_td_array = one_td_array[1:]
 
             for td in one_td_array:

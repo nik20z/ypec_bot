@@ -1,4 +1,5 @@
-from vkbottle import Keyboard, Text
+from vkbottle import Keyboard
+from vkbottle import Text
 # from vkbottle import KeyboardButtonColor
 
 

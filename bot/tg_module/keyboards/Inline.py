@@ -16,7 +16,7 @@ from bot.misc import Donate
 from bot.misc import Communicate
 
 
-def type_names():
+def type_names() -> InlineKeyboardMarkup:
     """Выбор профиля"""
     keyboard = InlineKeyboardMarkup(row_width=2)
 
@@ -29,12 +29,12 @@ def type_names():
     return keyboard
 
 
-def groups__list(group__name_array: dict,
+def groups__list(group__name_array: list,
                  course: int = 1,
                  add_back_button: bool = False,
                  callback: str = "g_list",
                  last_callback_data: str = "s",
-                 row_width: int = 4):
+                 row_width: int = 4) -> InlineKeyboardMarkup:
     """Список групп"""
     keyboard = InlineKeyboardMarkup(row_width=row_width)
     buttons = []
@@ -69,7 +69,7 @@ def teachers_list(teacher_names_array: list,
                   add_back_button: bool = False,
                   callback: str = "t_list",
                   last_callback_data: str = "s",
-                  row_width: int = 2):
+                  row_width: int = 2) -> InlineKeyboardMarkup:
     """Список преподавателей"""
     keyboard = InlineKeyboardMarkup(row_width=row_width)
     buttons = []
@@ -104,7 +104,7 @@ def teachers_list(teacher_names_array: list,
 def create_name_list(keyboard: InlineKeyboardMarkup,
                      names_array: list,
                      short_type_name: str,
-                     row_width: int = 1):
+                     row_width: int = 1) -> InlineKeyboardMarkup:
     """Список групп/преподавателей в меню настроек"""
     names_array_dict = {}
     for one_name in names_array:
@@ -130,7 +130,7 @@ def create_name_list(keyboard: InlineKeyboardMarkup,
 def user_settings(user_settings_data: list,
                   row_width_group_: int = 3,
                   row_width_teacher: int = 2,
-                  row_width: int = 3):
+                  row_width: int = 3) -> InlineKeyboardMarkup:
     """Меню настроек"""
     keyboard = InlineKeyboardMarkup(row_width=row_width)
 
@@ -177,7 +177,7 @@ def user_settings(user_settings_data: list,
     return keyboard
 
 
-def main_settings(user_settings_data: list, row_width: int = 2):
+def main_settings(user_settings_data: list, row_width: int = 2) -> InlineKeyboardMarkup:
     """Меню основных настроек"""
     keyboard = InlineKeyboardMarkup(row_width=row_width)
 
@@ -187,15 +187,15 @@ def main_settings(user_settings_data: list, row_width: int = 2):
     view_week_day = user_settings_data[8]
     view_add = user_settings_data[9]
     view_time = user_settings_data[10]
-    # view_dpo_info = user_settings_data[11]
+    view_dpo_info = user_settings_data[11]
 
-    # 'view_dpo_info': ['ДПО', view_dpo_info]
     button_info = {'spamming': ['🔔 Рассылка', spamming],
                    'pin_msg': ['📌 Закреплять', pin_msg],
                    'view_name': ['ℹ Заголовок', view_name],
                    'view_week_day': ['День недели', view_week_day],
                    'view_add': ['🏷 Подробно', view_add],
-                   'view_time': ['⌚ Время', view_time]}
+                   'view_time': ['⌚ Время', view_time],
+                   'view_dpo_info': ['ДПО', view_dpo_info]}
 
     for key, val in button_info.items():
         text = val[0]
@@ -209,14 +209,13 @@ def main_settings(user_settings_data: list, row_width: int = 2):
     return keyboard
 
 
-def support(callback_data: str,
-            last_callback_data: str):
+def support(callback_data: str, last_callback_data: str) -> InlineKeyboardMarkup:
     """Меню поддержки"""
     keyboard = InlineKeyboardMarkup()
 
     vk_btn = Button('💬 Вконтакте 💬').inline("", url=Communicate.DEVELOPER)
     inst_btn = Button('📷 Instagram 📷').inline("", url=Communicate.INSTAGRAM)
-    future_updates_btn = Button("⚠ Баги и ошибки ⚠").inline(f"{callback_data} future_updates")
+    future_updates_btn = Button("Будущие обновы и баги").inline(f"{callback_data} future_updates")
     # report_problem_btn = Button("✏ Сообщить о проблеме ✏").inline("", url=Communicate.DEVELOPER)
     donate_btn = Button("💳 Отправить донат 💳").inline(f"{callback_data} donate")
     back_btn = get_back_button(last_callback_data)
@@ -231,7 +230,7 @@ def support(callback_data: str,
     return keyboard
 
 
-def donate(last_callback_data: str):
+def donate(last_callback_data: str) -> InlineKeyboardMarkup:
     """Меню с вариантами донатов"""
     keyboard = InlineKeyboardMarkup()
 
@@ -254,7 +253,7 @@ def donate(last_callback_data: str):
 
 def group__card(group__user_info: list,
                 callback_data: str,
-                last_callback_data: str):
+                last_callback_data: str) -> InlineKeyboardMarkup:
     """Карточка группы"""
     keyboard = InlineKeyboardMarkup()
 
@@ -293,9 +292,9 @@ def group__card(group__user_info: list,
     return keyboard
 
 
-def teacher_card(teacher_user_info: tuple,
+def teacher_card(teacher_user_info: list,
                  callback_data: str,
-                 last_callback_data: str):
+                 last_callback_data: str) -> InlineKeyboardMarkup:
     """Карточка преподавателя"""
     keyboard = InlineKeyboardMarkup()
 
@@ -340,7 +339,7 @@ def week_days_main_timetable(week_days_id_main_timetable_array,
                              callback_data: str,
                              current_week_day_id: int = None,
                              last_callback_data: str = None,
-                             row_width: int = 2):
+                             row_width: int = 2) -> InlineKeyboardMarkup:
     """Список дней недели для выбора основного расписания"""
     keyboard = InlineKeyboardMarkup(row_width=row_width)
     buttons = []
@@ -363,7 +362,7 @@ def week_days_main_timetable(week_days_id_main_timetable_array,
 
 def months_ready_timetable(months_array: list,
                            callback_data: str,
-                           last_callback_data: str):
+                           last_callback_data: str) -> InlineKeyboardMarkup:
     """Список месяцев для просмотра истории расписания"""
     keyboard = InlineKeyboardMarkup()
 
@@ -379,7 +378,7 @@ def months_ready_timetable(months_array: list,
 
 def dates_ready_timetable(dates_array: list,
                           callback_data: str,
-                          last_callback_data: str):
+                          last_callback_data: str) -> InlineKeyboardMarkup:
     """Список дат для просмотра истории расписания"""
     keyboard = InlineKeyboardMarkup(row_width=2)
     buttons = []
@@ -413,17 +412,16 @@ def timetable_paging(type_name: str,
                      dates_array: list,
                      date_: str,
                      last_callback_data: str,
-                     add_back_button: bool = False):
+                     add_back_button: bool = False) -> InlineKeyboardMarkup:
     """Кнопки листания расписания"""
     keyboard = InlineKeyboardMarkup(row_width=2)
 
     ind_date_ = dates_array.index(date_)
-
     last_date_ = get_date_by_ind(dates_array, ind_date_ - 1)
     next_date = get_date_by_ind(dates_array, ind_date_ + 1)
 
-    left_btn = get_paging_button(f"{last_callback_data} timetable_paging {type_name} {name_id} {last_date_}", direction="left")
-    right_btn = get_paging_button(f"{last_callback_data} timetable_paging {type_name} {name_id} {next_date}", direction="right")
+    left_btn = get_paging_button(f"{last_callback_data} t_p {type_name} {name_id} {last_date_}", direction="left")
+    right_btn = get_paging_button(f"{last_callback_data} t_p {type_name} {name_id} {next_date}", direction="right")
     keyboard.add(left_btn, right_btn)
 
     if add_back_button:

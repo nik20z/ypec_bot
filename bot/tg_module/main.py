@@ -36,7 +36,7 @@ async def on_shutdown(dp: Dispatcher) -> None:
     await dp.storage.wait_closed()
 
 
-async def start_telegram_bot():
+async def start_telegram_bot() -> None:
     Table.create()
     Table.create_view()
 

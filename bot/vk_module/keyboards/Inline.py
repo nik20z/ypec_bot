@@ -1,10 +1,14 @@
-from vkbottle import Keyboard, KeyboardButtonColor, Callback, OpenLink
+from vkbottle import Keyboard
+from vkbottle import KeyboardButtonColor
+from vkbottle import Callback
+from vkbottle import OpenLink
 
 from .util import get_back_button
 from .util import get_paging_button
 from .util import split_array
 # from .util import get_close_button
 from .util import get_condition_smile
+from .util import get_date_by_ind
 
 from bot.misc import Communicate
 from bot.misc import Donate
@@ -166,7 +170,7 @@ def support(callback_data: str, last_callback_data: str):
 
     vk_btn = OpenLink(Communicate.DEVELOPER, '💬 Вконтакте 💬')
     inst_btn = OpenLink(Communicate.INSTAGRAM, '📷 Instagram 📷')
-    future_updates_btn = Callback("⚠ Баги и ошибки ⚠", {"cmd": f"{callback_data} future_updates"})
+    future_updates_btn = Callback("Будущие обновы и баги", {"cmd": f"{callback_data} future_updates"})
     donate_btn = Callback("💳 Отправить донат 💳", {"cmd": f"{callback_data} donate"})
     back_btn = get_back_button(last_callback_data)
 
@@ -215,44 +219,58 @@ def group__card(group__user_info: list,
     # group__id = group__user_info[0]
     group__name = group__user_info[1]
     department = group__user_info[2]
-    # dpo_state = group__user_info[3]
+    dpo_state = group__user_info[3]
     main_subscribe = group__user_info[4]
-    # subscribe_state = group__user_info[4]
-    # spam_state = group__user_info[5]
+    # subscribe_state = group__user_info[5]
+    # spam_state = group__user_info[6]
 
     department_smile = {0: '💰', 1: '🧪', 2: '🛠️'}.get(department, '')  # 💸
     group__name_btn = Callback(f"{department_smile} {group__name} {department_smile}", {"cmd": f"* {group__name}"})
 
     week_days_main_timetable_btn = Callback("Неделя", {"cmd": f"{callback_data} wdmt"})
     history_ready_timetable_btn = Callback("История", {"cmd": f"{callback_data} mhrt"})
+    dpo_btn = Callback("ДПО", {"cmd": f"{callback_data} dpo"})
     #spam_text_btn = Callback("🌀 Рассылка", {"cmd": "settings_info spamming"})
     #spam_btn = Callback(get_condition_smile(spam_state), {"cmd": f"{callback_data} sp_gr"})
     #subscribe_text_btn = Callback("☄ Подписка", {"cmd": "settings_info subscribe"})
     #subscribe_btn = Callback(get_condition_smile(subscribe_state), {"cmd": f"{callback_data} sub_gr"})
-    back_btn = get_back_button(last_callback_data)
     ready_timetable_btn = Callback("Текущее расписание", {"cmd": f"{callback_data} g_rt"})
+    back_btn = get_back_button(last_callback_data)
     main_subscribe_btn = Callback(get_condition_smile(main_subscribe), {"cmd": f"{callback_data} m_sub_gr"})
 
+    # Строчка №1
     keyboard.add(group__name_btn)
     keyboard.row()
+
+    # Строчка №2
     keyboard.add(week_days_main_timetable_btn)
     keyboard.add(history_ready_timetable_btn)
     keyboard.row()
+
+    # Строчка №3
+    if dpo_state:
+        keyboard.add(dpo_btn)
+        keyboard.row()
+
     #keyboard.add(spam_text_btn)
     #keyboard.add(spam_btn)
     #keyboard.row()
     #keyboard.add(subscribe_text_btn)
     #keyboard.add(subscribe_btn)
     #keyboard.row()
+
+    # Строчка №4
     keyboard.add(ready_timetable_btn)
     keyboard.row()
+
+    # Строчка №5
     keyboard.add(back_btn)
     keyboard.add(main_subscribe_btn)
 
     return keyboard
 
 
-def teacher_card(teacher_user_info: tuple,
+def teacher_card(teacher_user_info: list,
                  callback_data: str,
                  last_callback_data: str):
     """Карточка преподавателя"""
@@ -261,8 +279,8 @@ def teacher_card(teacher_user_info: tuple,
     teacher_id = teacher_user_info[0]
     teacher_name = teacher_user_info[1]
     gender = teacher_user_info[2]
-    # dpo_state = teacher_user_info[3]
-    main_subscribe = teacher_user_info[3]
+    dpo_state = teacher_user_info[3]
+    main_subscribe = teacher_user_info[4]
     # subscribe_state = teacher_user_info[4]
     # spam_state = teacher_user_info[5]
 
@@ -272,6 +290,7 @@ def teacher_card(teacher_user_info: tuple,
     week_days_main_timetable_btn = Callback("Неделя", {"cmd": f"{callback_data} wdmt"})
     history_ready_timetable_btn = Callback("История", {"cmd": f"{callback_data} mhrt"})
     lessons_list_btn = Callback("📋 Список", {"cmd": f"{callback_data} lessons_list {teacher_id}"})
+    dpo_btn = Callback("ДПО", {"cmd": f"{callback_data} dpo"})
     #spam_text_btn = Callback("🌀 Рассылка", {"cmd": "settings_info spamming"})
     #spam_btn = Callback(get_condition_smile(spam_state), {"cmd": f"{callback_data} sp_tch"})
     #subscribe_text_btn = Callback("☄ Подписка", {"cmd": "settings_info subscribe"})
@@ -280,21 +299,33 @@ def teacher_card(teacher_user_info: tuple,
     ready_timetable_btn = Callback("Текущее расписание", {"cmd": f"{callback_data} t_rt"})
     main_subscribe_btn = Callback(get_condition_smile(main_subscribe), {"cmd": f"{callback_data} m_sub_tch"})
 
+    # Строчка №1
     keyboard.add(teacher_name_btn)
     keyboard.row()
+
+    # Строчка №2
     keyboard.add(week_days_main_timetable_btn)
     keyboard.add(history_ready_timetable_btn)
     keyboard.row()
+
+    # Строчка №3
     keyboard.add(lessons_list_btn)
+    if dpo_state:
+        keyboard.add(dpo_btn)
     keyboard.row()
+
     #keyboard.add(spam_text_btn)
     #keyboard.add(spam_btn)
     #keyboard.row()
     #keyboard.add(subscribe_text_btn)
     #keyboard.add(subscribe_btn)
     #keyboard.row()
+
+    # Строчка №4
     keyboard.add(ready_timetable_btn)
     keyboard.row()
+
+    # Строчка №5
     keyboard.add(back_btn)
     keyboard.add(main_subscribe_btn)
 
@@ -378,5 +409,30 @@ def dates_ready_timetable(dates_array: list,
     '''
 
     keyboard.add(get_back_button(last_callback_data))
+
+    return keyboard
+
+
+def timetable_paging(type_name: str,
+                     name_id: int,
+                     dates_array: list,
+                     date_: str,
+                     last_callback_data: str,
+                     add_back_button: bool = False):
+    """Кнопки листания расписания"""
+    keyboard = Keyboard(inline=True)
+
+    ind_date_ = dates_array.index(date_)
+    last_date_ = get_date_by_ind(dates_array, ind_date_ - 1)
+    next_date = get_date_by_ind(dates_array, ind_date_ + 1)
+
+    left_btn = get_paging_button(f"{last_callback_data} t_p {type_name} {name_id} {last_date_}", direction="left")
+    right_btn = get_paging_button(f"{last_callback_data} t_p {type_name} {name_id} {next_date}", direction="right")
+    keyboard.add(left_btn)
+    keyboard.add(right_btn)
+
+    if add_back_button:
+        keyboard.row()
+        keyboard.add(get_back_button(last_callback_data))
 
     return keyboard

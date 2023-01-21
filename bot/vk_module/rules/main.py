@@ -28,7 +28,7 @@ class CheckPayload(ABCRule[Message]):
 
 
 class CheckState(ABCRule[Message]):
-    """"""
+    """Проверка состояния пользователя"""
     def __init__(self, state):
         self.state = state
         # UserStates.choice_type_name

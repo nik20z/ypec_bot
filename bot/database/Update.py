@@ -5,7 +5,7 @@ def user_settings(user_id: int,
                   key: str,
                   value: str,
                   table_name: str = "telegram",
-                  convert_val_text: bool = True):
+                  convert_val_text: bool = True) -> None:
     """Изменить параметр в настройках пользователя по названию колонки"""
     query = "UPDATE {0} SET {1} = {2} WHERE user_id = {3}".format(table_name, key, value, user_id)
     if convert_val_text:
@@ -33,7 +33,7 @@ def user_settings_value(user_id: int,
                         name_: str,
                         value: str,
                         table_name: str = "telegram",
-                        remove_: bool = False):
+                        remove_: bool = False) -> bool:
     """Занести в массив если не равно, иначе - удалить из массива"""
     if remove_:
         query = """UPDATE {0} 
@@ -69,7 +69,7 @@ def user_settings_array(user_id: int,
                         table_name: str = "telegram",
                         remove_=False,
                         append_=False,
-                        limit_array: int = 2):
+                        limit_array: int = 2) -> bool:
     """Занести в массив если не равно или удалить если равно
         Если remove is None, то не удалять, а только добавлять, если нет
         Если append is None, то не добавлять, а только удалять при наличии
@@ -115,18 +115,22 @@ def user_settings_array(user_id: int,
 
 
 def change_id(table_name: str,
-              colomn_name: str,
+              column_name: str,
               id_: int,
-              new_id: int):
+              new_id: int) -> None:
     """Запрос на замену id предметов или аудиторий в таблице ready_timetable"""
     query = """UPDATE {0}
                SET {1}_id = {3}
-               WHERE {1}_id = {2}""".format(table_name, colomn_name, id_, new_id)
+               WHERE {1}_id = {2}
+               """.format(table_name,
+                          column_name,
+                          id_,
+                          new_id)
     cursor.execute(query)
     connection.commit()
 
 
-def stat_value(date_: str, column_name: str, value):
+def stat_value(date_: str, column_name: str, value) -> None:
     """Заносим данные в статистику по названию колонки"""
     query = "UPDATE stat SET {1} = {2} WHERE date_ = '{0}'::date".format(date_, column_name, value)
     cursor.execute(query)

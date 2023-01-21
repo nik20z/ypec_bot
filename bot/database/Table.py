@@ -123,12 +123,13 @@ table_create_queries = {
                                         audience_id smallint REFERENCES audience (audience_id));""",
 
     "practice": """CREATE TABLE IF NOT EXISTS practice (
-                                        group__id smallint REFERENCES group_ (group__id) NOT NULL PRIMARY KEY,
+                                        group__id smallint REFERENCES group_ (group__id) NOT NULL,
                                         lesson_name_id smallint REFERENCES lesson (lesson_id),
-                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        teacher_id smallint REFERENCES teacher (teacher_id) NOT NULL,
                                         audience_id smallint REFERENCES audience (audience_id),
                                         start_date date,
-                                        stop_date date);""",
+                                        stop_date date,
+                                        PRIMARY KEY (group__id, teacher_id));""",
 
     "telegram": """CREATE TABLE IF NOT EXISTS telegram (
                                         user_id bigint NOT NULL PRIMARY KEY,
@@ -190,7 +191,7 @@ table_create_queries = {
 }
 
 
-def drop(table_name: str = None, cascade_state: bool = False):
+def drop(table_name: str = None, cascade_state: bool = False) -> None:
     """Удаляем таблицу"""
     if table_name is None:
         for table_name in table_create_queries.keys():
@@ -200,7 +201,7 @@ def drop(table_name: str = None, cascade_state: bool = False):
     connection.commit()
 
 
-def create(table_name: str = None):
+def create(table_name: str = None) -> None:
     """Создаём таблицу"""
     if table_name is None:
         for table_name in table_create_queries.keys():
@@ -210,7 +211,7 @@ def create(table_name: str = None):
         connection.commit()
 
 
-def create_view(view_name: str = None):
+def create_view(view_name: str = None) -> None:
     """Создаём представление"""
     if view_name is None:
         for view_name in view_create_queries.keys():
@@ -220,7 +221,7 @@ def create_view(view_name: str = None):
         connection.commit()
 
 
-def delete(table_name: str = None):
+def delete(table_name: str = None) -> None:
     """Удаляем все данные из таблицы"""
     if table_name is None:
         for table_name in table_create_queries.keys():
@@ -233,7 +234,7 @@ def delete(table_name: str = None):
 def add_column(table_name: str,
                column_name: str,
                data_type: str,
-               constraint: str = ""):
+               constraint: str = "") -> None:
     """Добавить новую колонку"""
     query = """ALTER TABLE {0} 
                ADD COLUMN IF NOT EXISTS {1} {2} {3};

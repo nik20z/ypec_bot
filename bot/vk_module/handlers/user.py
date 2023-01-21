@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from io import BytesIO
+from typing import Union, Any
 
 from vkbottle import BaseStateGroup
 from vkbottle import GroupEventType
@@ -56,7 +57,7 @@ class UserStates(BaseStateGroup):
 
 
 @user_labeler.message(CheckNewUser())
-async def new_user(message: Message):
+async def new_user(message: Message) -> None:
     """Обработчик для нового пользователя"""
     user_id = message.peer_id
     joined = datetime.utcfromtimestamp(message.date)
@@ -81,7 +82,7 @@ async def new_user(message: Message):
                         MessageEvent,
                         CheckPayload(["g_list"]),
                         CheckState('choice_type_name'))
-async def choice_group__name(event: MessageEvent):
+async def choice_group__name(event: MessageEvent) -> None:
     """Выбор группы из списка для нового пользователя"""
     user_id = event.object.user_id
 
@@ -104,7 +105,7 @@ async def choice_group__name(event: MessageEvent):
                         MessageEvent,
                         CheckPayload(["g_list"], ind=-2),
                         CheckState('choice_name'))
-async def paging_group__list_state(event: MessageEvent):
+async def paging_group__list_state(event: MessageEvent) -> None:
     """Обработчик листания списка групп для новых пользователей"""
     await paging_group__list(event)
 
@@ -112,7 +113,7 @@ async def paging_group__list_state(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["g_list"], ind=-2))
-async def paging_group__list(event: MessageEvent, last_ind=-2):
+async def paging_group__list(event: MessageEvent, last_ind: int = -2) -> None:
     """Обработчик листания списка групп"""
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
@@ -139,7 +140,7 @@ async def paging_group__list(event: MessageEvent, last_ind=-2):
                         MessageEvent,
                         CheckPayload(["t_list"]),
                         CheckState('choice_type_name'))
-async def choice_teacher_name(event: MessageEvent):
+async def choice_teacher_name(event: MessageEvent) -> None:
     """Выбор преподавателя из списка для нового пользователя"""
     user_id = event.object.user_id
 
@@ -162,7 +163,7 @@ async def choice_teacher_name(event: MessageEvent):
                         MessageEvent,
                         CheckPayload(["t_list"], ind=-2),
                         CheckState('choice_name'))
-async def paging_teacher_list_state(event: MessageEvent):
+async def paging_teacher_list_state(event: MessageEvent) -> None:
     """Обработчик листания списка преподавателей для новых пользователей"""
     await paging_teacher_list(event)
 
@@ -170,7 +171,7 @@ async def paging_teacher_list_state(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["t_list"], ind=-2))
-async def paging_teacher_list(event: MessageEvent, last_ind=-2):
+async def paging_teacher_list(event: MessageEvent, last_ind: int = -2) -> None:
     """Обработчик листания списка преподавателей"""
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
@@ -194,7 +195,7 @@ async def paging_teacher_list(event: MessageEvent, last_ind=-2):
 
 
 @user_labeler.message(state=UserStates.choice_type_name)
-async def error_choice_type_name_message(message: Message):
+async def error_choice_type_name_message(message: Message) -> None:
     """Обработчик левых сообщений при выборе профиля"""
     user_id = message.peer_id
     await message.answer(AnswerText.errors("choice_type_name"))
@@ -205,7 +206,7 @@ async def error_choice_type_name_message(message: Message):
                         MessageEvent,
                         CheckPayload(["gc"], ind=-2),
                         CheckState('choice_name'))
-async def choice_group_(event: MessageEvent):
+async def choice_group_(event: MessageEvent) -> None:
     """Обработчик выбора группы для нового пользователя"""
     user_id = event.object.peer_id
     type_name = "group_"
@@ -217,10 +218,11 @@ async def choice_group_(event: MessageEvent):
     # Update.user_settings_array(user_id, table_name="vkontakte", name_="spam_group_", value=group__id, remove_=None)
 
     date_ = Select.fresh_ready_timetable_date(type_name=type_name, name_id=int(group__id))
+    date_str = date_.strftime("%d.%m.%Y")
     data_ready_timetable = Select.ready_timetable(type_name, date_, group__name)
 
     text = MessageTimetable(group__name,
-                            date_,
+                            date_str,
                             data_ready_timetable,
                             format_=False).get()
 
@@ -254,7 +256,7 @@ async def choice_group_(event: MessageEvent):
                         MessageEvent,
                         CheckPayload(["tc"], ind=-2),
                         CheckState('choice_name'))
-async def choice_teacher(event: MessageEvent):
+async def choice_teacher(event: MessageEvent) -> None:
     """Выбор преподавателя для нового пользователя"""
     user_id = event.object.peer_id
     type_name = "teacher"
@@ -266,10 +268,11 @@ async def choice_teacher(event: MessageEvent):
     # Update.user_settings_array(user_id, table_name="vkontakte", name_="spam_teacher", value=teacher_id, remove_=None)
 
     date_ = Select.fresh_ready_timetable_date(type_name=type_name, name_id=int(teacher_id))
+    date_str = date_.strftime("%d.%m.%Y")
     data_ready_timetable = Select.ready_timetable(type_name, date_, teacher_name)
 
     text = MessageTimetable(teacher_name,
-                            date_,
+                            date_str,
                             data_ready_timetable,
                             format_=False).get()
     keyboard = Reply.default()
@@ -291,7 +294,7 @@ async def choice_teacher(event: MessageEvent):
 
 
 @user_labeler.message(state=UserStates.choice_name)
-async def error_choice_name_message(message: Message):
+async def error_choice_name_message(message: Message) -> None:
     """Обработчик левых сообщений при выборе группы/преподавателя"""
     user_id = message.peer_id
     await message.answer(AnswerText.errors("choice_name"))
@@ -299,7 +302,7 @@ async def error_choice_name_message(message: Message):
 
 
 @user_labeler.message(CommandRule("start", ["!", "/"], 0))
-async def choice_type_name(message: Message, text: str = None):
+async def choice_type_name(message: Message, text: str = None) -> None:
     """Выбор типа профиля"""
     user_id = message.peer_id
 
@@ -313,14 +316,25 @@ async def choice_type_name(message: Message, text: str = None):
 
 
 @user_labeler.message(CommandRule("Расписание", [""], 0))
-async def timetable(message: Message):
+async def timetable(message: Message,
+                    event: MessageEvent = None,
+                    last_callback_data: str = "",
+                    paging: bool = False,
+                    type_name: str = None,
+                    name_id: int = None,
+                    date_: str = None,
+                    add_back_button: bool = False
+                    ) -> Union[None, Any]:
     """Обработчик запроса на получение Расписания"""
     user_id = message.peer_id
 
     user_info = Select.user_info_by_column_names(user_id, table_name="vkontakte")
 
-    type_name = user_info[0]
-    name_id = user_info[1]
+    if not paging:
+        """Выводим обычное расписание расписание"""
+        type_name = user_info[0]
+        name_id = user_info[1]
+
     view_name = user_info[2]
     # view_week_day = user_info[3]
     view_add = user_info[4]
@@ -332,30 +346,76 @@ async def timetable(message: Message):
         # logger.info(f"message {user_id} {None} {name_id}")
         return await message.answer(AnswerText.no_main_subscription())
 
-    name_ = Select.name_by_id(type_name, name_id)
+    name_ = Select.name_by_id(type_name, str(name_id))
 
-    date_ = Select.fresh_ready_timetable_date(type_name=type_name, name_id=name_id)
-    date_str = date_.strftime("%d.%m.%Y")
+    dates_array = Select.dates_ready_timetable(type_name=type_name,
+                                               name_id=name_id,
+                                               type_date='string',
+                                               type_sort='ASC')
+
+    if date_ == 'empty':
+        """Если при листании упёрлись в конец списка, то выводим сообщение об отсутсвии расписания"""
+        return await event.show_snackbar(AnswerCallback.not_timetable_paging())
+
+    elif date_ is None:
+        """Если не указана дата, то берём самую актуальную"""
+        date_ = Select.fresh_ready_timetable_date(type_name=type_name,
+                                                  name_id=name_id,
+                                                  type_date='string')
 
     if date_ is None:
-        return await message.answer(AnswerText.no_exist_timetable(name_))
+        """Если в БД нет данных о расписании"""
+        text = AnswerText.not_exist_timetable(name_)
+        keyboard = Reply.default()
+        return await message.answer(text, reply_markup=keyboard)
 
     data_ready_timetable = Select.ready_timetable(type_name, date_, name_)
 
     text = MessageTimetable(name_,
-                            date_str,
+                            date_,
                             data_ready_timetable,
                             view_name=view_name,
                             view_add=view_add,
                             view_time=view_time,
                             format_=False).get()
-    keyboard = Reply.default()
 
-    await message.answer(text, keyboard=keyboard)
+    keyboard = Inline.timetable_paging(type_name,
+                                       name_id,
+                                       dates_array,
+                                       date_,
+                                       last_callback_data,
+                                       add_back_button=add_back_button)
+
+    if paging:
+        await event.edit_message(text, keyboard=keyboard)
+    else:
+        await message.answer(text, keyboard=keyboard)
+
+
+@user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
+                        MessageEvent,
+                        CheckPayload(["t_p"], ind=-4))
+async def timetable_paging(event: MessageEvent, last_ind: int = -4) -> None:
+    """Листание расписания"""
+    add_back_button = False
+    [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
+    if last_callback_data != "":
+        """Если есть данные о прошлых шагах - добавляем кнопку  Назад"""
+        add_back_button = True
+
+    [type_name, name_id, date_] = callback_data_split[-3:]
+    await timetable(event,
+                    event=event,
+                    last_callback_data=last_callback_data,
+                    paging=True,
+                    type_name=type_name,
+                    name_id=name_id,
+                    date_=date_,
+                    add_back_button=add_back_button)
 
 
 @user_labeler.message(CommandRule("Настройки", [""], 0))
-async def settings(message: Message, event=None, edit_text=False):
+async def settings(message: Message, event: MessageEvent = None, edit_text: bool = False) -> None:
     """Обработчик запроса на получение Настроек пользователя"""
     user_id = message.peer_id
     user_settings_data = list(Select.user_info(user_id, table_name="vkontakte"))
@@ -382,7 +442,7 @@ async def settings(message: Message, event=None, edit_text=False):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["s"]))
-async def settings_callback(event: MessageEvent):
+async def settings_callback(event: MessageEvent) -> None:
     """Обработчик CallbackQuery на возвращение к меню Настроек"""
     await settings(event.object, event=event, edit_text=True)
 
@@ -390,7 +450,7 @@ async def settings_callback(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["ms"]))
-async def main_settings(event: MessageEvent):
+async def main_settings(event: MessageEvent) -> None:
     """Обработчик CallbackQuery на переход к окну основных настроек"""
     user_id = event.object.peer_id
     user_settings_data = list(Select.user_info(user_id, table_name="vkontakte"))
@@ -406,7 +466,7 @@ async def main_settings(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["settings_info"], ind=-2))
-async def settings_info(event: MessageEvent):
+async def settings_info(event: MessageEvent) -> None:
     """Обработчик CallbackQuery для получения информации при нажатии кнопки"""
     user_id = event.object.peer_id
     settings_name = event.payload['cmd'].split()[-1]
@@ -417,7 +477,7 @@ async def settings_info(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["update_main_settings_bool"], ind=-2))
-async def update_main_settings_bool(event: MessageEvent):
+async def update_main_settings_bool(event: MessageEvent) -> None:
     """Обновление настроек True/False"""
     user_id = event.object.peer_id
     settings_name = event.payload['cmd'].split()[-1]
@@ -431,7 +491,7 @@ async def update_main_settings_bool(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["support"]))
-async def support(event: MessageEvent, last_ind=-1):
+async def support(event: MessageEvent, last_ind: int = -1) -> None:
     """Обработка нажатия кнопки support"""
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
@@ -447,7 +507,7 @@ async def support(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["donate"]))
-async def donate(event: MessageEvent, last_ind=-1):
+async def donate(event: MessageEvent, last_ind: int = -1) -> None:
     """Вывести меню с вариантами донейшинов"""
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
@@ -463,7 +523,7 @@ async def donate(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["future_updates"]))
-async def future_updates(event: MessageEvent, last_ind=-1):
+async def future_updates(event: MessageEvent, last_ind: int = -1) -> None:
     """Вывести сообщение о будущих апдейтах"""
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
@@ -486,7 +546,7 @@ async def future_updates(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['sp_gr', 'sub_gr', 'sp_tch', 'sub_tch']))
-async def spam_or_subscribe_name_id(event: MessageEvent, last_ind=-1):
+async def spam_or_subscribe_name_id(event: MessageEvent, last_ind: int = -1) -> None:
     """Обновление настроек spamming и subscribe для карточек группы/преподавателя"""
     user_id = event.object.peer_id
     callback_data_split = get_callback_values(event, last_ind)[0]
@@ -549,7 +609,7 @@ async def spam_or_subscribe_name_id(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['m_sub_gr', 'm_sub_tch']))
-async def main_subscribe_name_id(event: MessageEvent, last_ind=-1):
+async def main_subscribe_name_id(event: MessageEvent, last_ind: int = -1) -> None:
     """Обновление настроек main_subscribe для карточек группы/преподавателя"""
     user_id = event.object.peer_id
     callback_data_split = get_callback_values(event, last_ind)[0]
@@ -599,7 +659,7 @@ async def main_subscribe_name_id(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['gc'], ind=-2))
-async def group__card(event: MessageEvent, last_ind=-2):
+async def group__card(event: MessageEvent, last_ind: int = -2) -> None:
     """Показать карточку группы"""
     user_id = event.object.peer_id
     [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
@@ -621,7 +681,7 @@ async def group__card(event: MessageEvent, last_ind=-2):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['tc'], ind=-2))
-async def teacher_card(event: MessageEvent, last_ind=-2):
+async def teacher_card(event: MessageEvent, last_ind: int = -2) -> None:
     """Показать карточку преподавателя"""
     user_id = event.object.peer_id
     [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
@@ -643,7 +703,7 @@ async def teacher_card(event: MessageEvent, last_ind=-2):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['lessons_list'], ind=-2))
-async def lessons_list_by_teacher(event: MessageEvent, last_ind=-2):
+async def lessons_list_by_teacher(event: MessageEvent, last_ind: int = -2) -> Union[None, Any]:
     """Вывести список дисциплин, которые ведёт преподаватель"""
     user_id = event.object.peer_id
     [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
@@ -666,7 +726,7 @@ async def lessons_list_by_teacher(event: MessageEvent, last_ind=-2):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['wdmt']))
-async def week_days_main_timetable(event: MessageEvent, last_ind=-1):
+async def week_days_main_timetable(event: MessageEvent, last_ind: int = -1) -> Union[None, Any]:
     """Показать список дней недели дня получения основного расписания"""
     user_id = event.object.peer_id
     [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
@@ -692,7 +752,7 @@ async def week_days_main_timetable(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['download_main_timetable']))
-async def download_main_timetable(event: MessageEvent):
+async def download_main_timetable(event: MessageEvent) -> None:
     """Скачать Основное расписание на неделю"""
     user_id = event.object.peer_id
     callback_data_split = event.payload['cmd'].split()
@@ -732,7 +792,7 @@ async def download_main_timetable(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['wdmt'], ind=-2))
-async def get_main_timetable_by_week_day_id(event: MessageEvent, last_ind: int = -1):
+async def get_main_timetable_by_week_day_id(event: MessageEvent, last_ind: int = -1) -> Union[None, Any]:
     """Получить основное расписание для дня недели"""
     user_id = event.object.peer_id
     [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
@@ -768,62 +828,16 @@ async def get_main_timetable_by_week_day_id(event: MessageEvent, last_ind: int =
 
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
-                        CheckPayload(['g_rt', 't_rt']))
-async def view_ready_timetable(event: MessageEvent,
-                               last_ind: int = -1,
-                               type_name: str = None,
-                               name_id: int = None,
-                               date_: str = None):
-    """Показать текущее расписание"""
-    user_id = event.object.peer_id
-    [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
-
-    if type_name is None:
-        type_name = column_name_by_callback.get(callback_data_split[-1])
-
-    if name_id is None:
-        name_id = callback_data_split[-2]
-
-    if date_ is None:
-        date_ = Select.fresh_ready_timetable_date(type_name=type_name, name_id=name_id)
-        if date_ is None:
-            """Расписание полностью отсутствует"""
-            text = AnswerCallback.not_ready_timetable()
-            return await event.show_snackbar(text)
-        date_ = date_.strftime("%d.%m.%Y")
-
-    user_info = Select.user_info_by_column_names(user_id,
-                                                 column_names=['view_add', 'view_time'],
-                                                 table_name="vkontakte")
-    view_add = user_info[0]
-    view_time = user_info[1]
-
-    name_ = Select.name_by_id(type_name, name_id)
-
-    data_ready_timetable = Select.ready_timetable(type_name, date_, name_)
-
-    text = MessageTimetable(name_,
-                            date_,
-                            data_ready_timetable,
-                            view_add=view_add,
-                            view_time=view_time,
-                            format_=False).get()
-    keyboard = Inline.get_back_button(last_callback_data, return_keyboard=True)
-
-    await event.edit_message(text, keyboard=keyboard)
-    await answer_callback(event)
-    # logger.info(f"callback {user_id} {type_name} {name_} {name_id}")
-
-
-@user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
-                        MessageEvent,
                         CheckPayload(['mhrt']))
-async def months_history_ready_timetable(event: MessageEvent, last_ind=-1):
+async def months_history_ready_timetable(event: MessageEvent, last_ind: int = -1) -> None:
     """Вывести список с месяцами"""
+    max_number_months = 3
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
 
     months_array = Select.months_ready_timetable()
+    if len(months_array) > max_number_months:
+        months_array = months_array[-max_number_months:]
 
     text = AnswerText.months_history_ready_timetable()
     keyboard = Inline.months_ready_timetable(months_array, event.payload['cmd'], last_callback_data)
@@ -836,7 +850,7 @@ async def months_history_ready_timetable(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['mhrt'], ind=-2))
-async def dates_ready_timetable(event: MessageEvent, last_ind=-1):
+async def dates_ready_timetable(event: MessageEvent, last_ind: int = -1) -> Union[None, Any]:
     """Вывести список дат"""
     user_id = event.object.peer_id
     [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
@@ -865,7 +879,7 @@ async def dates_ready_timetable(event: MessageEvent, last_ind=-1):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['download_ready_timetable_by_month']))
-async def download_ready_timetable_by_month(event: MessageEvent):
+async def download_ready_timetable_by_month(event: MessageEvent) -> None:
     """Скачать всё расписание на определённый месяц"""
     user_id = event.object.peer_id
     callback_data_split = event.payload['cmd'].split()
@@ -918,7 +932,7 @@ async def download_ready_timetable_by_month(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['mhrt'], -3))
-async def ready_timetable_by_date(event: MessageEvent):
+async def ready_timetable_by_date(event: MessageEvent) -> None:
     """Вывести расписание для определённой даты"""
     user_id = event.object.peer_id
     callback_data_split = event.payload['cmd'].split()
@@ -935,8 +949,108 @@ async def ready_timetable_by_date(event: MessageEvent):
 
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
+                        CheckPayload(['dpo'], -1))
+async def view_dpo_information(event: MessageEvent, last_ind: int = -1) -> None:
+    """Получить информацию о ДПО"""
+    user_id = event.object.peer_id
+    [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
+
+    type_name = column_name_by_callback.get(callback_data_split[-3])
+    name_id = callback_data_split[-2]
+    name_ = Select.name_by_id(type_name, name_id)
+
+    week_days_id_dpo_array = Select.week_days_timetable(type_name, name_id, "dpo")
+
+    text = f"{name_}\n"
+    for week_day_id in week_days_id_dpo_array:
+        """Перебираем дни недели с ДПО"""
+        data_dpo = Select.dpo(type_name, name_, week_day_id)
+        week_day_name = get_week_day_name_by_id(week_day_id, type_case='default', bold=False)
+        text += MessageTimetable(name_,
+                                 week_day_name,
+                                 data_dpo,
+                                 start_text="",
+                                 view_name=False,
+                                 mode='vkontakte',
+                                 format_=True).get()
+        text += '\n'
+
+    keyboard = Inline.get_back_button(last_callback_data, return_keyboard=True)
+
+    await event.edit_message(text, keyboard=keyboard)
+    #await callback.bot.answer_callback_query(callback.id)
+    await answer_callback(event)
+    # logger.info(f"callback {user_id} {type_name} {name_} {name_id}")
+
+
+@user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
+                        MessageEvent,
+                        CheckPayload(['g_rt', 't_rt']))
+async def view_ready_timetable(event: MessageEvent,
+                               last_ind: int = -1,
+                               type_name: str = None,
+                               name_id: int = None,
+                               date_: str = None) -> Union[None, Any]:
+    """Показать текущее расписание"""
+    user_id = event.object.peer_id
+    [callback_data_split, last_callback_data] = get_callback_values(event, last_ind)
+
+    if type_name is None:
+        type_name = column_name_by_callback.get(callback_data_split[-1])
+
+    if name_id is None:
+        name_id = callback_data_split[-2]
+
+    if date_ is None:
+        date_ = Select.fresh_ready_timetable_date(type_name=type_name,
+                                                  name_id=name_id,
+                                                  type_date='string')
+
+        if date_ is None:
+            """Расписание полностью отсутствует"""
+            text = AnswerCallback.not_ready_timetable()
+            return await event.show_snackbar(text)
+
+    user_info = Select.user_info_by_column_names(user_id,
+                                                 column_names=['view_add', 'view_time'],
+                                                 table_name="vkontakte")
+    view_add = user_info[0]
+    view_time = user_info[1]
+
+    name_ = Select.name_by_id(type_name, name_id)
+
+    data_ready_timetable = Select.ready_timetable(type_name, date_, name_)
+
+    text = MessageTimetable(name_,
+                            date_,
+                            data_ready_timetable,
+                            view_add=view_add,
+                            view_time=view_time,
+                            format_=False).get()
+
+    dates_array = Select.dates_ready_timetable(type_name=type_name,
+                                               name_id=name_id,
+                                               type_date='string',
+                                               type_sort='ASC')
+
+    # keyboard = Inline.get_back_button(last_callback_data, return_keyboard=True)
+
+    keyboard = Inline.timetable_paging(type_name,
+                                       name_id,
+                                       dates_array,
+                                       date_,
+                                       last_callback_data,
+                                       add_back_button=True)
+
+    await event.edit_message(text, keyboard=keyboard)
+    await answer_callback(event)
+    # logger.info(f"callback {user_id} {type_name} {name_} {name_id}")
+
+
+@user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
+                        MessageEvent,
                         CheckPayload(['*'], ind=0))
-async def view_callback(event: MessageEvent):
+async def view_callback(event: MessageEvent) -> None:
     """Обработчик нажатий на пустые кнопки"""
     user_id = event.object.peer_id
     text = ' '.join(event.payload['cmd'].split()[1:])
@@ -948,7 +1062,7 @@ async def view_callback(event: MessageEvent):
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(['close']))
-async def close(event: MessageEvent):
+async def close(event: MessageEvent) -> None:
     """Обработать запрос на удаление (закрытие) окна сообщения"""
     user_id = event.object.peer_id
     '''
@@ -964,7 +1078,7 @@ async def close(event: MessageEvent):
 
 
 @user_labeler.message(CommandRule("call_schedule", ["!", "/"], 0))
-async def call_schedule(message: Message):
+async def call_schedule(message: Message) -> None:
     """Расписание звонков"""
     user_id = message.peer_id
     await message.answer(AnswerText.call_schedule())
@@ -972,7 +1086,7 @@ async def call_schedule(message: Message):
 
 
 @user_labeler.message(CommandRule("help", ["!", "/"], 0))
-async def help_message(message: Message):
+async def help_message(message: Union[Message, Any]) -> None:
     """Вывести help-сообщение"""
     user_id = message.peer_id
     await api.messages.send(user_id=user_id,
@@ -982,7 +1096,7 @@ async def help_message(message: Message):
 
 
 @user_labeler.message(CommandRule("keyboard", ["!", "/"], 0))
-async def show_keyboard(message: Message):
+async def show_keyboard(message: Message) -> None:
     """Показать клавиатуру"""
     user_id = message.peer_id
 
@@ -996,7 +1110,7 @@ async def show_keyboard(message: Message):
 
 
 @user_labeler.message()
-async def other_messages(message: Message):
+async def other_messages(message: Message) -> None:
     """Обработчик сторонних сообщений"""
     user_id = message.peer_id
     text = AnswerText.other_messages()

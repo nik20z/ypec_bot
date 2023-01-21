@@ -9,14 +9,14 @@ from bot.tg_module.config import ADMINS_TG
 
 
 class NewUser(AbstractFilter):
-    def check(self, message: Message):
+    def check(self, message: Message) -> bool:
         user_id = message.chat.id
         return Select.user_info(user_id) is None
 
 
 class AdminFilter(AbstractFilter):
     """Фильтр админов"""
-    def check(self, message: Message):
+    def check(self, message: Message) -> bool:
         user_id = message.chat.id
         return user_id in ADMINS_TG
 

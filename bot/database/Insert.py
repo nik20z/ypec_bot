@@ -3,12 +3,12 @@ from bot.database.connect import cursor, connection
 from bot.database import Select
 
 
-def get_list_tuples(a: list):
+def get_list_tuples(a: list) -> list:
     """Конвертировать массив кортежей в обычный массив"""
     return [(x,) for x in a if x is not None]
 
 
-def main_timetable(data: list):
+def main_timetable(data: list) -> None:
     """Занести в таблицу main_timetable данные об основном расписании"""
     query = """INSERT INTO main_timetable
                     (group__id, 
@@ -28,7 +28,7 @@ def main_timetable(data: list):
     connection.commit()
 
 
-def replacement(data: list, table_name: str = "replacement"):
+def replacement(data: list, table_name: str = "replacement") -> None:
     """Занести данные о заменах"""
     query = """INSERT INTO {0}
                     (group__id,
@@ -46,7 +46,7 @@ def replacement(data: list, table_name: str = "replacement"):
     connection.commit()
 
 
-def practice(data: list):
+def practice(data: list) -> None:
     """Занести данные о практике"""
     query = """INSERT INTO practice
                             (group__id,
@@ -56,14 +56,12 @@ def practice(data: list):
                              start_date,
                              stop_date)
                         VALUES ({0},{1},{2},{3},%s,%s)
-                        ON CONFLICT (group__id) DO UPDATE
+                        ON CONFLICT (group__id, teacher_id) DO UPDATE
                         SET (lesson_name_id, 
-                             teacher_id, 
                              audience_id, 
                              start_date, 
                              stop_date) 
                         = (EXCLUDED.lesson_name_id, 
-                           EXCLUDED.teacher_id, 
                            EXCLUDED.audience_id, 
                            EXCLUDED.start_date, 
                            EXCLUDED.stop_date)
@@ -75,7 +73,7 @@ def practice(data: list):
     connection.commit()
 
 
-def ready_timetable(data: list):
+def ready_timetable(data: list) -> None:
     """Занести данные о готовом расписании"""
     query = """INSERT INTO ready_timetable
                             (date_,
@@ -84,17 +82,36 @@ def ready_timetable(data: list):
                              lesson_name_id,
                              teacher_id,
                              audience_id)
-                        VALUES (%s,{0},%s,{1},{2},{3})
-                        ON CONFLICT DO NOTHING
-                        """.format(Select.query_info_by_name('group_', default_method=True),
-                                   Select.query_info_by_name('lesson', similari_value=0.8),
-                                   Select.query_info_by_name('teacher'),
-                                   Select.query_info_by_name('audience', default_method=True))
+                VALUES (%s,{0},%s,{1},{2},{3})
+                ON CONFLICT DO NOTHING
+                """.format(Select.query_info_by_name('group_', default_method=True),
+                           Select.query_info_by_name('lesson', similari_value=0.8),
+                           Select.query_info_by_name('teacher'),
+                           Select.query_info_by_name('audience', default_method=True))
     cursor.executemany(query, data)
     connection.commit()
 
 
-def group_(group__names: list):
+def dpo(data: list) -> None:
+    """Занести данные о ДПО"""
+    query = """INSERT INTO dpo
+                        (group__id,
+                         week_day_id,
+                         num_lesson,
+                         lesson_name_id,
+                         teacher_id,
+                         audience_id)
+                VALUES ({0},%s,%s,{1},{2},{3})
+                ON CONFLICT DO NOTHING
+                """.format(Select.query_info_by_name('group_', default_method=True),
+                           Select.query_info_by_name('lesson', similari_value=0.8),
+                           Select.query_info_by_name('teacher'),
+                           Select.query_info_by_name('audience', default_method=True))
+    cursor.executemany(query, data)
+    connection.commit()
+
+
+def group_(group__names: list) -> None:
     """Занести в таблицу group_ новые группы"""
     group_names_in_table = Select.all_info(table_name="group_", column_name="group__name")
     names_array = list(set(group__names) - set(group_names_in_table))
@@ -107,7 +124,7 @@ def group_(group__names: list):
     connection.commit()
 
 
-def teacher(teacher_names: list):
+def teacher(teacher_names: list) -> None:
     """Занести в таблицу teacher новых преподавателей"""
     teacher_names_in_table = Select.all_info(table_name="teacher", column_name="teacher_name")
     names_array = list(set(teacher_names) - set(teacher_names_in_table))
@@ -120,7 +137,7 @@ def teacher(teacher_names: list):
     connection.commit()
 
 
-def lesson(lesson_names: list):
+def lesson(lesson_names: list) -> None:
     """Занести в таблицу lesson новые названия предметов"""
     lesson_names_in_table = Select.all_info(table_name="lesson", column_name="lesson_name")
     names_array = list(set(lesson_names) - set(lesson_names_in_table))
@@ -142,7 +159,7 @@ def lesson(lesson_names: list):
     connection.commit()
 
 
-def audience(audience_names: list):
+def audience(audience_names: list) -> None:
     """Занести в таблицу audience новые аудитории"""
     audience_names_in_table = Select.all_info(table_name="audience", column_name="audience_name")
     names_array = list(set(audience_names) - set(audience_names_in_table))
@@ -155,15 +172,14 @@ def audience(audience_names: list):
     connection.commit()
 
 
-def new_user(table_name: str, data_: tuple):
+def new_user(table_name: str, data_: tuple) -> None:
     """Добавляем нового пользователя"""
     query = "INSERT INTO {0} (user_id, user_name, joined) VALUES (%s, %s, %s)".format(table_name)
     cursor.execute(query, data_)
     connection.commit()
 
 
-def config(key_: str,
-           value_: str):
+def config(key_: str, value_: str) -> None:
     """Заносим или обновляем данные в таблице config по ключу и значению"""
     query = """INSERT INTO config
                         (key_, value_)
@@ -177,7 +193,7 @@ def config(key_: str,
 
 def time_replacement_appearance(table_name: str = "stat",
                                 column_date_name: str = "date_",
-                                column_time_name: str = "rep_new_time"):
+                                column_time_name: str = "rep_new_time") -> None:
     """Заносим в таблицу stat информацию о времени появления замен на сайте (это основное назначение)"""
     query = """INSERT INTO {0} ({1}, {2}) 
                VALUES (current_date, current_time)
@@ -192,7 +208,7 @@ def time_replacement_appearance(table_name: str = "stat",
 
 def row_in_table(table_name: str,
                  column_name: str,
-                 value: str):
+                 value: str) -> None:
     """Занести данные по названию таблицы и колонки"""
     query = "INSERT INTO {0} ({1}) VALUES ('{2}') ON CONFLICT DO NOTHING;".format(table_name, column_name, value)
     cursor.execute(query)
