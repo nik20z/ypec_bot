@@ -12,12 +12,11 @@
 [![https://telegram.me/ypec_bot](https://img.shields.io/badge/💬%20Telegram-Channel-blue.svg?style=flat-square)](https://telegram.me/ypec_bot)
 [![https://vk.com/ypec_bot](https://img.shields.io/badge/💬%20Вконтакте-Группа-blue.svg?style=flat-square)](https://vk.com/ypec_bot)
 
-![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)
 ![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)
 
 ## Описание
-Ежедневная рассылка готового расписания (соединение основного расписания с заменами, которые появляются каждый день), а также отслеживание изменений в заменах в течение дня с последующим оповещением пользователей
+Ежедневная рассылка готового расписания (соединение [основного расписания](https://www.ypec.ru/rasp-z) с [заменами](https://www.ypec.ru/rasp-zmnext), которые появляются каждый день на сайте), а также отслеживание изменений в заменах в течение дня с последующим оповещением пользователей
 
 ![image](https://user-images.githubusercontent.com/62090150/209471806-4aa5afb0-5cb7-4db8-b83a-c276114f0d6d.png)
 ![image](https://user-images.githubusercontent.com/62090150/209471733-0c0b6709-ee87-4381-91e0-d18f7cc39e96.png)
@@ -167,7 +166,7 @@ sudo apt-get install python-dev
 | `/get_main_timetable {args}`     | спарсить основное расписание по названию группы/ФИО преподавателя или ALL для всех |
 | `/update_balance`                | обновить баланс Qiwi                                                               |
 | `/info_log`                      | потоковый log                                                                      |
-| `/mailing_test`                  |  протестировать рассылку                                                           |
+| `/mailing_test`                  | протестировать рассылку                                                            |
 | `/mailing {args}`                | рассылка сообщений для всех пользователей                                          |
 | `/set_future_updates`            | обновить информацию о будущих обновлениях/багах                                    |
 | `/stat`                          | получить статистику                                                                |
