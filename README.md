@@ -15,6 +15,7 @@
 ![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)
 
+
 ## Описание
 Ежедневная рассылка готового расписания (соединение [основного расписания](https://www.ypec.ru/rasp-z) с [заменами](https://www.ypec.ru/rasp-zmnext), которые появляются каждый день на сайте), а также отслеживание изменений в заменах в течение дня с последующим оповещением пользователей
 
@@ -114,8 +115,8 @@ pip3 install -r requirements.txt
 Вносим правки в файл /bot/misc/env.py
 1. TG_TOKEN - получаем через Bot Father
 2. VK_TOKEN - получаем в настройках группы (ставим все галочки при получении токена)
-3. VK_TOKEN_VERSION
-4. VK_BOT_ID
+3. VK_TOKEN_VERSION - версия токена
+4. VK_BOT_ID - id бота/группы в вк
 5. SETTINGS - настройки доступа к БД
 
 Добавляем свой id в vkontakte в файл /bot/vk_module/config.py (если, не знаете, где найти: [тык](https://vk.com/faq18062) и [тык](https://regvk.com/id))
@@ -149,7 +150,9 @@ sudo apt-get install libpq-dev
 sudo apt-get install python-dev
 ```
 
+
 ## Для администрирования
+
 Для установки бота на сервер и настройки советую использовать [PuTTY](https://www.putty.org). А также [WinSCP](https://winscp.net/eng/download.php) для удобного взаиможействия с файлами проекта
 
 
@@ -157,6 +160,7 @@ sudo apt-get install python-dev
 
 1. Парсим основное расписание по команде /get_main_timetable ALL
 2. При необходимости редачим файл dpo.csv и заносим данные о ДПО в БД по команде /update_dpo
+
 
 ## Команды для админов
 
