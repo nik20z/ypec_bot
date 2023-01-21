@@ -154,6 +154,11 @@ sudo apt-get install python-dev
 Для установки бота на сервер и настройки советую использовать [PuTTY](https://www.putty.org). А также [WinSCP](https://winscp.net/eng/download.php) для удобного взаиможействия с файлами проекта
 
 
+## После полной настройки и запуска бота
+
+1. Парсим основное расписание по команде /get_main_timetable ALL
+2. При необходимости редачим файл dpo.csv и заносим данные о ДПО в БД по команде /update_dpo
+
 <p align="center">
   <img src="https://user-images.githubusercontent.com/62090150/193757014-4e816ff4-e524-4d3d-a0f9-5d64701e9ec0.png">
 </p>
