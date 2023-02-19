@@ -147,6 +147,8 @@ systemctl start ypec_bot
 systemctl status ypec_bot
 ```
 
+## Решение некоторых проблем
+
 При необходимости меняем часовой пояс
 ```
 timedatectl
