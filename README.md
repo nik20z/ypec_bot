@@ -92,8 +92,6 @@ sudo -i -u postgres
   psql
     CREATE USER ypec WITH PASSWORD '123456789';
     CREATE DATABASE ypec_bot;
-    \c ypec_bot
-    CREATE EXTENSION pg_trgm;
     \q
   exit
 ```
