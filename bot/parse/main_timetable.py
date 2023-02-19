@@ -8,10 +8,24 @@ from bot.functions import get_week_day_id_by_name
 
 from bot.parse.functions import get_full_link_by_part
 from bot.parse.functions import get_correct_audience
-from bot.parse.functions import get_lesson_teacher_group_names
+from bot.parse.functions import convert_lesson_name
 
 from bot.parse.config import main_link_ypec
 from bot.parse.config import headers_ypec
+
+
+def _get_lesson_teacher_group_names(type_name: str, one_lesson: list) -> list:
+    """Получить данные о паре и группе/преподавателях"""
+    if type_name == 'teacher':
+        lesson_name = one_lesson[-2]
+        teacher_or_group_name_split = [one_lesson[-3]]
+    else:
+        lesson_name = one_lesson[-3]
+        teacher_or_group_name_split = one_lesson[-2].split('/')
+
+    lesson_name = convert_lesson_name(lesson_name)
+
+    return [lesson_name, teacher_or_group_name_split]
 
 
 class MainTimetable:
@@ -74,7 +88,7 @@ class MainTimetable:
             part_link = self.get_info_by_type_name(type_name, get_='part_link')
             url = get_full_link_by_part(main_link_ypec, part_link)
 
-            r = requests.get(url, verify=True)
+            r = requests.get(url, verify=False)
             soup = BeautifulSoup(r.text, 'lxml')
 
             array_names = [x.text.strip() for x in soup.find('select').find_all('option')][1:]
@@ -97,7 +111,7 @@ class MainTimetable:
 
     def create_session(self) -> None:
         if self.method == "async":
-            self.session = aiohttp.ClientSession()
+            self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False))
         else:
             self.session = requests.Session()
 
@@ -142,6 +156,8 @@ class MainTimetable:
 
             for name_ in names:
                 """Перебираем наименования"""
+                print(name_)
+
                 data_post = self.get_data_post(type_name, name_)
                 soup = await self.get_soup(url, data_post)
                 self.table_handler(soup, type_name, name_)
@@ -188,7 +204,7 @@ class MainTimetable:
             lesson_type = self.get_lesson_type(one_td_array[-1])
             audience_split = one_lesson[-1].split(',')
 
-            [lesson_name, teacher_or_group_name_split] = get_lesson_teacher_group_names(type_name, one_lesson)
+            [lesson_name, teacher_or_group_name_split] = _get_lesson_teacher_group_names(type_name, one_lesson)
 
             if not num_lesson[0].isdigit() or (len(num_lesson) > 2 and num_lesson[2].isalpha()):
                 num_lesson = last_num_lesson

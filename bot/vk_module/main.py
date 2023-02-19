@@ -2,11 +2,9 @@ from vkbottle import Bot
 
 from bot.vk_module.handlers.config import api, state_dispenser, labeler
 from bot.vk_module.handlers import admin_labeler, user_labeler, chat_labeler
-from bot.database import Table
 
 
-async def start_vk_bot():
-    Table.create()
+async def start_vk_bot() -> None:
 
     labeler.load(admin_labeler)
     labeler.load(user_labeler)

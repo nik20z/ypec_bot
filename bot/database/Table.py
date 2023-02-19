@@ -34,7 +34,8 @@ view_create_queries = {
                                             num_lesson,
                                             lesson_name,
                                             teacher_name,
-                                            audience_name
+                                            audience_name,
+                                            type_lesson_mark
                                     FROM ready_timetable
                                     LEFT JOIN group_ ON ready_timetable.group__id = group_.group__id
                                     LEFT JOIN lesson ON ready_timetable.lesson_name_id = lesson.lesson_id 
@@ -69,69 +70,7 @@ view_create_queries = {
 }
 
 table_create_queries = {
-    "group_": """CREATE TABLE IF NOT EXISTS group_ (
-                                        group__id smallserial NOT NULL PRIMARY KEY,
-                                        group__name varchar(10) NOT NULL UNIQUE,
-                                        department smallint);""",
-
-    "teacher": """CREATE TABLE IF NOT EXISTS teacher (
-                                        teacher_id smallserial NOT NULL PRIMARY KEY,
-                                        teacher_name varchar(35) NOT NULL UNIQUE,
-                                        gender boolean);""",
-
-    "lesson": """CREATE TABLE IF NOT EXISTS lesson (
-                                        lesson_id smallserial NOT NULL PRIMARY KEY,
-                                        lesson_name text NOT NULL UNIQUE);""",
-
-    "audience": """CREATE TABLE IF NOT EXISTS audience (
-                                        audience_id smallserial NOT NULL PRIMARY KEY,
-                                        audience_name text NOT NULL UNIQUE);""",
-
-    "main_timetable": """CREATE TABLE IF NOT EXISTS main_timetable (
-                                        group__id smallint REFERENCES group_ (group__id),
-                                        week_day_id smallint,
-                                        num_lesson varchar(10),
-                                        lesson_type boolean,
-                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
-                                        teacher_id smallint REFERENCES teacher (teacher_id),
-                                        audience_id smallint REFERENCES audience (audience_id));""",
-
-    "dpo": """CREATE TABLE IF NOT EXISTS dpo (
-                                        group__id smallint REFERENCES group_ (group__id),
-                                        week_day_id smallint,
-                                        num_lesson varchar(10),
-                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
-                                        teacher_id smallint REFERENCES teacher (teacher_id),
-                                        audience_id smallint REFERENCES audience (audience_id));""",
-
-    "replacement": """CREATE TABLE IF NOT EXISTS replacement (
-                                        group__id smallint REFERENCES group_ (group__id),
-                                        num_lesson varchar(10),
-                                        lesson_by_main_timetable text,
-                                        replace_for_lesson text,
-                                        teacher_id smallint REFERENCES teacher (teacher_id),
-                                        audience_id smallint REFERENCES audience (audience_id));""",
-
-    "replacement_temp": "CREATE TABLE IF NOT EXISTS replacement_temp (LIKE replacement INCLUDING ALL);",
-
-    "ready_timetable": """CREATE TABLE IF NOT EXISTS ready_timetable (
-                                        date_ date,
-                                        group__id smallint REFERENCES group_ (group__id),
-                                        num_lesson varchar(10),
-                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
-                                        teacher_id smallint REFERENCES teacher (teacher_id),
-                                        audience_id smallint REFERENCES audience (audience_id));""",
-
-    "practice": """CREATE TABLE IF NOT EXISTS practice (
-                                        group__id smallint REFERENCES group_ (group__id) NOT NULL,
-                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
-                                        teacher_id smallint REFERENCES teacher (teacher_id) NOT NULL,
-                                        audience_id smallint REFERENCES audience (audience_id),
-                                        start_date date,
-                                        stop_date date,
-                                        PRIMARY KEY (group__id, teacher_id));""",
-
-    "telegram": """CREATE TABLE IF NOT EXISTS telegram (
+"telegram": """CREATE TABLE IF NOT EXISTS telegram (
                                         user_id bigint NOT NULL PRIMARY KEY,
                                         user_name text,
                                         joined date,
@@ -142,8 +81,10 @@ table_create_queries = {
                                         spam_group__ids smallint[],
                                         spam_teacher_ids smallint[],
                                         spamming boolean DEFAULT True,
-                                        pin_msg boolean DEFAULT True, 
+                                        empty_spamming boolean DEFAULT True,
+                                        pin_msg boolean DEFAULT False, 
                                         view_name boolean DEFAULT True, 
+                                        view_type_lesson_mark boolean DEFAULT False,
                                         view_week_day boolean DEFAULT False,
                                         view_add boolean DEFAULT True, 
                                         view_time boolean DEFAULT False,
@@ -165,10 +106,12 @@ table_create_queries = {
                                         spam_group__ids smallint[],
                                         spam_teacher_ids smallint[],
                                         spamming boolean DEFAULT True,
+                                        empty_spamming boolean DEFAULT True,
                                         pin_msg boolean DEFAULT True, 
                                         view_name boolean DEFAULT True, 
                                         view_add boolean DEFAULT True, 
                                         view_time boolean DEFAULT False,
+                                        view_dpo_info boolean DEFAULT False,
                                         ban boolean DEFAULT False,
                                         number_bans smallint DEFAULT 0,
                                         timeout_ban timestamp without time zone,
@@ -176,9 +119,90 @@ table_create_queries = {
                                         sync_code bigint REFERENCES telegram (user_id)
                                         );""",
 
+    "group_": """CREATE TABLE IF NOT EXISTS group_ (
+                                        group__id smallserial NOT NULL PRIMARY KEY,
+                                        group__name varchar(10) NOT NULL UNIQUE,
+                                        department smallint,
+                                        tg_headman_user bigint REFERENCES telegram (user_id),
+                                        vk_headman_user bigint REFERENCES vkontakte (user_id)
+                                        );""",
+
+    "teacher": """CREATE TABLE IF NOT EXISTS teacher (
+                                        teacher_id smallserial NOT NULL PRIMARY KEY,
+                                        teacher_name varchar(35) NOT NULL UNIQUE,
+                                        gender boolean,
+                                        tg_form_master_user bigint REFERENCES telegram (user_id),
+                                        vk_form_master_user bigint REFERENCES vkontakte (user_id)
+                                        );""",
+
+    "lesson": """CREATE TABLE IF NOT EXISTS lesson (
+                                        lesson_id smallserial NOT NULL PRIMARY KEY,
+                                        lesson_name text NOT NULL UNIQUE
+                                        );""",
+
+    "audience": """CREATE TABLE IF NOT EXISTS audience (
+                                        audience_id smallserial NOT NULL PRIMARY KEY,
+                                        audience_name text NOT NULL UNIQUE
+                                        );""",
+
+    "main_timetable": """CREATE TABLE IF NOT EXISTS main_timetable (
+                                        group__id smallint REFERENCES group_ (group__id),
+                                        week_day_id smallint,
+                                        num_lesson varchar(10),
+                                        lesson_type boolean,
+                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
+                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        audience_id smallint REFERENCES audience (audience_id)
+                                        );""",
+
+    "dpo": """CREATE TABLE IF NOT EXISTS dpo (
+                                        group__id smallint REFERENCES group_ (group__id),
+                                        week_day_id smallint,
+                                        num_lesson varchar(10),
+                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
+                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        audience_id smallint REFERENCES audience (audience_id),
+                                        PRIMARY KEY (group__id, 
+                                                     week_day_id,
+                                                     lesson_name_id, 
+                                                     teacher_id, 
+                                                     audience_id)
+                                        );""",
+
+    "replacement": """CREATE TABLE IF NOT EXISTS replacement (
+                                        group__id smallint REFERENCES group_ (group__id),
+                                        num_lesson varchar(10),
+                                        lesson_by_main_timetable text,
+                                        replace_for_lesson text,
+                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        audience_id smallint REFERENCES audience (audience_id)
+                                        );""",
+
+    "replacement_temp": "CREATE TABLE IF NOT EXISTS replacement_temp (LIKE replacement INCLUDING ALL);",
+
+    "ready_timetable": """CREATE TABLE IF NOT EXISTS ready_timetable (
+                                        date_ date,
+                                        group__id smallint REFERENCES group_ (group__id),
+                                        num_lesson varchar(10),
+                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
+                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        audience_id smallint REFERENCES audience (audience_id),
+                                        type_lesson_mark smallint[]
+                                        );""",
+
+    "practice": """CREATE TABLE IF NOT EXISTS practice (
+                                        group__id smallint REFERENCES group_ (group__id) NOT NULL,
+                                        lesson_name_id smallint REFERENCES lesson (lesson_id),
+                                        teacher_id smallint REFERENCES teacher (teacher_id),
+                                        audience_id smallint REFERENCES audience (audience_id),
+                                        start_date date,
+                                        stop_date date
+                                        );""",
+
     "config": """CREATE TABLE IF NOT EXISTS config (
                                         key_ text NOT NULL PRIMARY KEY,
-                                        value_ text DEFAULT NULL);""",
+                                        value_ text DEFAULT NULL
+                                        );""",
 
     "stat": """CREATE TABLE IF NOT EXISTS stat (
                                         date_ date NOT NULL PRIMARY KEY,
@@ -189,6 +213,16 @@ table_create_queries = {
                                         cnt_req_message integer
                                         );"""
 }
+
+
+def create_extensions(extension_name: str = None) -> None:
+    """Добавляем расширения"""
+    if extension_name is None:
+        for extension_name in ('pg_trgm',):
+            create_extensions(extension_name)
+    else:
+        cursor.execute(f"CREATE EXTENSION IF NOT EXISTS {extension_name};")
+        connection.commit()
 
 
 def drop(table_name: str = None, cascade_state: bool = False) -> None:

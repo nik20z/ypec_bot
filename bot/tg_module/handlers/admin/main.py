@@ -13,7 +13,7 @@ from bot.tg_module.config import ADMINS_TG
 from bot.tg_module import answers
 
 from bot.database import Insert
-# from bot.database import Update
+from bot.database import Update
 from bot.database import Select
 from bot.database import Table
 from bot.database import Delete
@@ -33,44 +33,119 @@ async def help_admin(message: Message) -> None:
     await message.answer(AnswerText.help_admin())
 
 
+# БЛОК НАЗНАЧЕНИЯ СТАРОСТ И КЛАССНЫХ РУКОВОДИТЕЛЕЙ
+
+async def set_headman_user(message: Message) -> None:
+    """Пометить чей-то id в тг, как Старосту"""
+    message_args_split = message.get_args().split()
+    try:
+        user_id_or_link = message_args_split[-1]
+        group__name = message_args_split[-2].upper()
+        maybe_group__id = Select.query_info_by_name('group_', value=group__name, default_method=True)
+        social_network_type = message_args_split[-3]
+
+        if not maybe_group__id:
+            await message.answer('Такой группы не существует')
+
+        else:
+
+            if social_network_type == 'tg':
+                user_id = int(user_id_or_link)
+
+                if Select.user_info(user_id) is not None:
+                    group__id = int(maybe_group__id[0])
+                    Update.headman(group__id, user_id)
+
+            elif social_network_type == 'vk':
+                '''чекаем, вдруг прислали ссылку - https://vk.com/id264311526'''
+                await message.answer('vk - В разработке (^_^)')
+
+            await message.answer(f"Добавлен Староста группы {group__name} ({social_network_type})")
+
+    except IndexError:
+        await message.answer('Ошибка составления запроса')
+
+
+async def delete_headman_user(message: Message) -> None:
+    """Удалить Старосту"""
+    message_args_split = message.get_args().split()
+    try:
+        group__name = message_args_split[-1]
+        maybe_group__id = Select.query_info_by_name('group_', value=group__name, default_method=True)
+        social_network_type = message_args_split[-2]
+
+        if not maybe_group__id:
+            await message.answer('Такой группы не существует')
+
+        else:
+            group__id = int(maybe_group__id[0])
+
+            if social_network_type == 'tg':
+                Update.headman(group__id, 'NULL')
+
+            elif social_network_type == 'vk':
+                Update.headman(group__id, 'NULL', social_network_type='vk')
+
+            await message.answer(f"Удален Староста группы {group__name} ({social_network_type})")
+
+    except IndexError:
+        await message.answer('Ошибка составления запроса')
+
+
+async def set_form_master_user(message: Message) -> None:
+    """Пометить чей-то id, как Классного руководителя"""
+    await message.answer('В разработке (^_^)')
+
+
+async def delete_form_master_user(message: Message) -> None:
+    """Удалить Классного руководителя"""
+    await message.answer('В разработке (^_^)')
+
+
 async def get_user_link(message: Message) -> None:
     """Получить ссылку на пользователя"""
-    user_id_array = message.get_args().split()
-    text = '\n'.join([f"<a href='tg://user?id={user_id}'>{user_id}</a>" for user_id in user_id_array])
+    user_ids_array = message.get_args().split()
+    text = '\n'.join([f"<a href='tg://user?id={user_id}'>{user_id}</a>" for user_id in user_ids_array])
     await message.answer(text)
 
 
 async def mailing_test_start(message: Message) -> None:
     """Тест рассылки"""
     try:
-        await message.bot.send_message(GOD_ID_TG, text=message.get_args())
+        await message.answer(message.get_args())
     except MessageTextIsEmpty:
-        await message.bot.send_message(GOD_ID_TG, text="MessageTextIsEmpty")
+        await message.answer("MessageTextIsEmpty")
 
 
 async def mailing_start(message: Message) -> None:
     """Рассылка сообщений """
     count = 0
     count_success = 0
-    user_ids = Select.user_ids()
+    user_ids_spamming = Select.user_ids()
+    user_id = message.chat.id
     sending_message = message.get_args()
 
-    try:
-        for user_id in user_ids:
-            count += 1
-            try:
-                await message.bot.send_message(user_id, text=sending_message)
-                count_success += 1
-            except Exception as e:
-                await message.bot.send_message(GOD_ID_TG, text=f"{e} | {user_id}")
+    if user_id != GOD_ID_TG:
+        await message.answer("Спам-расссылку может производить только Создатель!")
 
-        text = f"Успешно: {count_success}\n" \
-               f"Неудачно: {count - count_success}\n" \
-               f"Всего: {count}"
-        await message.bot.send_message(GOD_ID_TG, text=text)
+    else:
 
-    except MessageTextIsEmpty:
-        await message.bot.send_message(GOD_ID_TG, text="MessageTextIsEmpty")
+        try:
+            for user_id in user_ids_spamming:
+                count += 1
+                try:
+                    await message.bot.send_message(user_id, text=sending_message)
+                    count_success += 1
+                except Exception as e:
+                    await message.answer(f"{e} | {user_id}")
+
+            text = f"Успешно: {count_success}\n" \
+                   f"Неудачно: {count - count_success}\n" \
+                   f"Всего: {count}"
+            await message.answer(text)
+
+        except MessageTextIsEmpty:
+            await message.answer("MessageTextIsEmpty")
 
 
 async def delete_user(message: Message) -> None:
@@ -95,6 +170,7 @@ async def get_main_timetable(message: Message) -> None:
     if message_args_split == ['ALL']:
         Table.delete('main_timetable')
         await th.get_main_timetable(type_name='group_', names=[])
+        await message.answer(f"Всё основное расписание было получено за {round(time.time() - t)}")
 
     elif message_args_split == ['']:
         await message.answer(f"Добавьте после команды названия групп/преподавателей")
@@ -126,7 +202,7 @@ async def get_main_timetable(message: Message) -> None:
         await message.answer(f"Основное расписание получено за {round(time.time() - t)}")
 
 
-async def get_dpo(message: Message) -> None:
+async def update_dpo(message: Message) -> None:
     """Перенести данные о ДПО из файла в БД"""
     dpo_obj = Dpo()
     dpo_obj.parse()
@@ -166,15 +242,16 @@ async def create_statistics(message: Message) -> None:
     for data_ in Select.count_subscribe_by_type_name("group_")[:10]:
         [name_, count_subscribe] = data_
         text += f"{name_[0]} {count_subscribe}\n"
-
     text += '\n'
 
     # График роста аудитории по дням
+    '''
     text += "График роста аудитории\n"
     for data_ in Select.count_all_users_by_dates():
         [joined, count_subscribe] = data_
         text += f"{joined[0].strftime('%d.%m.%Y')} {count_subscribe}\n"
     text += '\n'
+    '''
 
     # Подсчёт количества юзеров по категориям
     text += f"Получают рассылку: {len(Select.query_('SELECT user_id FROM telegram WHERE spamming'))}\n"
@@ -186,19 +263,7 @@ async def create_statistics(message: Message) -> None:
     await message.answer(text)
 
 
-async def test(message: Message) -> None:
-    """Тестовая фунция"""
-    '''
-    import asyncio
-    loop = asyncio.get_event_loop()
-    pending = asyncio.all_tasks(loop=loop)
-    for task in pending:
-        print(task)
-        coroutine_name = task.get_coro()
-        print(str(coroutine_name))
-        print()
-    '''
-
+async def view_config(message: Message) -> None:
     config = configparser.ConfigParser()
     config.read("config.ini")
 
@@ -213,16 +278,47 @@ async def test(message: Message) -> None:
     await message.answer(text, disable_web_page_preview=True)
 
 
-def register_admin_handlers(dp: Dispatcher):
-    # todo: register all admin handlers
+async def update_config(message: Message) -> None:
+    """Обновить информацию в конфиге"""
+    await message.answer('В разработке (^_^)')
 
-    dp.register_message_handler(test,
-                                IDFilter(chat_id=ADMINS_TG),
-                                commands=['test'])
+
+async def test(message: Message) -> None:
+    """Тестовая фунция"""
+    '''
+    import asyncio
+    loop = asyncio.get_event_loop()
+    pending = asyncio.all_tasks(loop=loop)
+    for task in pending:
+        print(task)
+        coroutine_name = task.get_coro()
+        print(str(coroutine_name))
+        print()
+    '''
+    pass
+
+
+def register_admin_handlers(dp: Dispatcher):
 
     dp.register_message_handler(help_admin,
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['help_admin'])
+
+    dp.register_message_handler(set_headman_user,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['set_headman_user'])
+
+    dp.register_message_handler(delete_headman_user,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['delete_headman_user'])
+
+    dp.register_message_handler(set_form_master_user,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['set_form_master_user'])
+
+    dp.register_message_handler(delete_form_master_user,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['delete_form_master_user'])
 
     dp.register_message_handler(get_user_link,
                                 IDFilter(chat_id=ADMINS_TG),
@@ -248,9 +344,9 @@ def register_admin_handlers(dp: Dispatcher):
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['get_main_timetable'])
 
-    dp.register_message_handler(get_dpo,
+    dp.register_message_handler(update_dpo,
                                 IDFilter(chat_id=ADMINS_TG),
-                                commands=['get_dpo'])
+                                commands=['update_dpo'])
 
     dp.register_message_handler(update_balance,
                                 IDFilter(chat_id=ADMINS_TG),
@@ -271,3 +367,11 @@ def register_admin_handlers(dp: Dispatcher):
     dp.register_message_handler(create_statistics,
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['stat'])
+
+    dp.register_message_handler(view_config,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['config'])
+
+    dp.register_message_handler(test,
+                                IDFilter(chat_id=ADMINS_TG),
+                                commands=['test'])

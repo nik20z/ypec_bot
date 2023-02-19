@@ -53,7 +53,11 @@ class SpammingHandlerVkontakte:
                 for user_data in spam_user_data:
                     """Перебираем массивы с данными пользователей"""
                     try:
-                        [user_id, pin_msg, view_name, view_add, view_time] = user_data
+                        [user_id,
+                         pin_msg,
+                         view_name,
+                         view_add,
+                         view_time] = user_data
 
                         text = MessageTimetable(name_,
                                                 self.date_,
@@ -65,7 +69,7 @@ class SpammingHandlerVkontakte:
                         try:
                             """Если пользователь просит закрепить сообщение"""
                             spam_message = await self.send_spam_message(user_id, text)
-                            logger.info(f"{user_id} | {type_name} | {name_id} | {name_}")
+                            logger.info(f"{spam_message} | {user_id} | {type_name} | {name_id} | {name_}")
 
                             # if pin_msg:
                             #   await self.pin_spam_message(user_id, spam_message)

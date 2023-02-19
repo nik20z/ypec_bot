@@ -67,6 +67,7 @@ class Replacements:
         self.audience_names = set()
 
         self.method = self.config['PARSE']['main_method']
+        self.parse_table_replacement_mode = self.config['PARSE']['table_replacement_mode']
 
     def get_date(self, soup: BeautifulSoup) -> None:
         """Получить дату с сайта"""
@@ -120,12 +121,12 @@ class Replacements:
 
         if self.method == "async":
             """Асинхронный парсинг-мод"""
-            session = aiohttp.ClientSession()
+            session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False))
             result = await session.post(url, headers=headers_ypec)
             soup = BeautifulSoup(await result.text(), 'lxml')
             await session.close()
         else:
-            result = requests.post(url, headers=headers_ypec, verify=True)
+            result = requests.post(url, headers=headers_ypec, verify=False)
             soup = BeautifulSoup(result.text, 'lxml')
 
         self.table_handler(soup)
@@ -150,7 +151,17 @@ class Replacements:
                                                         info='name',
                                                         value=maybe_group__name,
                                                         similari_value=0.44,
-                                                        add_where_ilike=True)
+                                                        check_course=True,
+                                                        check_number_group=True)
+
+                if not group__name:
+                    group__name = Select.query_info_by_name('group_',
+                                                            info='name',
+                                                            value=maybe_group__name,
+                                                            similari_value=0.44,
+                                                            check_course=True,
+                                                            check_number_group=False)
+
                 if group__name:
                     one_td_array = one_td_array[1:]
                     group__name = group__name[0]
@@ -167,9 +178,9 @@ class Replacements:
                 if num_lesson != '':
                     replace_for_lesson = convert_lesson_name(rep_lesson)
 
+                num_les_array = get_num_les_array(num_lesson)
                 audience_array = get_audience_array(one_lesson)
                 teacher_names_array = get_teacher_names_array(one_lesson)
-                num_les_array = get_num_les_array(num_lesson)
 
                 """Перебираем номера пар"""
                 for num_lesson in num_les_array:
@@ -181,6 +192,9 @@ class Replacements:
                         """Получаем имя учителя"""
                         maybe_teacher_name = self.get_teacher_name(teacher_name)
                         audience = get_correct_audience(audience_array[ind])
+
+                        if self.parse_table_replacement_mode == 'only_rep' and replace_for_lesson == '':
+                            replace_for_lesson = lesson_by_main_timetable
 
                         one_lesson_data = (group__name,
                                            num_lesson,

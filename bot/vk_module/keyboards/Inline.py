@@ -10,11 +10,13 @@ from .util import split_array
 from .util import get_condition_smile
 from .util import get_date_by_ind
 
+from bot.functions import month_translate
+from bot.functions import get_week_day_name_by_id
+# from bot.functions import week_day_translate
+
 from bot.misc import Communicate
 from bot.misc import Donate
-from bot.functions import month_translate
-from bot.functions import get_day_week_by_id
-# from bot.functions import week_day_translate
+from bot.misc import GoogleDrive
 
 
 def type_names():
@@ -71,7 +73,7 @@ def create_name_list(keyboard: Keyboard,
             id_ = one_name[0]
             name_ = one_name[1]
             spam_state = one_name[2]
-            smile_spam_state = '🌀' if spam_state == 'true' else ''  # 🌀 🔰 ▫ 📍
+            smile_spam_state = '🌀' if spam_state == 'true' else ''
             group_btn = Callback(f"{name_} {smile_spam_state}", {"cmd": f"s {short_type_name}c {id_}"})
             keyboard.add(group_btn)
 
@@ -127,6 +129,7 @@ def user_settings(user_settings_data: list,
     # last buttons
     keyboard.add(main_settings_btn)
     keyboard.add(support_btn, color=KeyboardButtonColor.POSITIVE)
+
     # keyboard.row()
     # keyboard.add(get_close_button())
 
@@ -138,12 +141,14 @@ def main_settings(user_settings_data: list):
     keyboard = Keyboard(inline=True)
 
     spamming = user_settings_data[5]
-    # pin_msg = user_settings_data[6]
-    view_name = user_settings_data[7]
-    # view_week_day = user_settings_data[8]
-    view_add = user_settings_data[9]
-    view_time = user_settings_data[10]
-    # view_dpo_info = user_settings_data[11]
+    # empty_spamming = user_settings_data[6]
+    # pin_msg = user_settings_data[7]
+    view_name = user_settings_data[8]
+    # view_type_lesson_mark = user_settings_data[9]
+    # view_week_day = user_settings_data[10]
+    view_add = user_settings_data[11]
+    view_time = user_settings_data[12]
+    # view_dpo_info = user_settings_data[13]
 
     button_info = {'spamming': ['🔔 Рассылка', spamming],
                    'view_name': ['Заголовок', view_name],
@@ -159,6 +164,10 @@ def main_settings(user_settings_data: list):
         keyboard.add(condition_text)
         keyboard.row()
 
+    statement_template_btn = OpenLink(GoogleDrive.SAMPLES, "Шаблоны ведомостей")
+    keyboard.add(statement_template_btn)
+    keyboard.row()
+
     keyboard.add(get_back_button("s"))
 
     return keyboard
@@ -170,7 +179,7 @@ def support(callback_data: str, last_callback_data: str):
 
     vk_btn = OpenLink(Communicate.DEVELOPER, '💬 Вконтакте 💬')
     inst_btn = OpenLink(Communicate.INSTAGRAM, '📷 Instagram 📷')
-    future_updates_btn = Callback("Будущие обновы и баги", {"cmd": f"{callback_data} future_updates"})
+    future_updates_btn = Callback("Баги и будущие обновы", {"cmd": f"{callback_data} future_updates"})
     donate_btn = Callback("💳 Отправить донат 💳", {"cmd": f"{callback_data} donate"})
     back_btn = get_back_button(last_callback_data)
 
@@ -224,7 +233,7 @@ def group__card(group__user_info: list,
     # subscribe_state = group__user_info[5]
     # spam_state = group__user_info[6]
 
-    department_smile = {0: '💰', 1: '🧪', 2: '🛠️'}.get(department, '')  # 💸
+    department_smile = {0: '💰', 1: '🧪', 2: '🛠️'}.get(department, '')
     group__name_btn = Callback(f"{department_smile} {group__name} {department_smile}", {"cmd": f"* {group__name}"})
 
     week_days_main_timetable_btn = Callback("Неделя", {"cmd": f"{callback_data} wdmt"})
@@ -346,7 +355,7 @@ def week_days_main_timetable(week_days_id_main_timetable_array: list,
 
     for week_days_row in split_array(week_days_id_main_timetable_array, row_width):
         for week_day_id in week_days_row:
-            week_day_text = get_day_week_by_id(week_day_id)
+            week_day_text = get_week_day_name_by_id(week_day_id, bold=False)
 
             if week_day_id == current_week_day_id:
                 week_day_text = f"🟢 {week_day_text}"
@@ -364,7 +373,7 @@ def week_days_main_timetable(week_days_id_main_timetable_array: list,
 def months_ready_timetable(months_array: list,
                            callback_data: str,
                            last_callback_data: str,
-                           row_width: int = 3):
+                           row_width: int = 1):
     """Список месяцев для просмотра истории расписания"""
     keyboard = Keyboard(inline=True)
 
@@ -373,7 +382,7 @@ def months_ready_timetable(months_array: list,
             text_btn = month_translate(month)
             month_btn = Callback(text_btn, {'cmd': f"{callback_data} {month}"})
             keyboard.add(month_btn)
-        keyboard.row()
+            keyboard.row()
 
     keyboard.add(get_back_button(last_callback_data))
 

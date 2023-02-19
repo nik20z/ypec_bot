@@ -17,18 +17,3 @@ def get_callback_values(callback: CallbackQuery, last_ind: int) -> list:
     callback_data_split = callback.data.split()
     last_callback_data = ' '.join(callback_data_split[:last_ind])
     return [callback_data_split, last_callback_data]
-
-
-'''
-def get_sync_code(user_id: int) -> str:
-    """Получаем sync_code из user_id"""
-    sync_code = "#"
-    if user_id > 0:
-        sync_code += 'U'
-    else:
-        sync_code += 'G'
-        user_id *= -1
-    for i in str(user_id):
-        sync_code += chr(int(i) + 65)
-    return sync_code
-'''

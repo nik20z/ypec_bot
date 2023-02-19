@@ -2,7 +2,7 @@ import requests
 from datetime import datetime
 from transliterate import translit
 from transliterate.base import TranslitLanguagePack, registry
-
+from typing import Union
 
 from bot.misc import Qiwi
 
@@ -96,12 +96,15 @@ def convert_lesson_name(lesson_name: str) -> str:
     return " ".join(replace_lesson_name.split())
 
 
-def get_correct_audience(audience: str) -> str:
+def get_correct_audience(audience: str) -> Union[str, None]:
     """Получить отформатированное название аудитории"""
     audience = ''.join([i for i in audience if i.isalnum() or i in ('-', '/')])
 
     if audience in ("nbsp", "''", ""):
         return None
+
+    if 'экс' in audience.lower():
+        return 'Экскурсия'
 
     if audience.isdigit():
         if int(audience) >= 100 or len(audience) >= 3:
@@ -128,25 +131,6 @@ def get_rub_balance() -> int:
     rub_balance = rub_alias[0]['balance']['amount']
 
     return rub_balance
-
-
-# main_timetable
-
-def get_lesson_teacher_group_names(type_name: str, one_lesson: list) -> list:
-    """Получить данные о паре и группе/преподавателях"""
-    if type_name == 'teacher':
-        lesson_name = one_lesson[-2]
-        teacher_or_group_name_split = [one_lesson[-3]]
-    else:
-        lesson_name = one_lesson[-3]
-        teacher_or_group_name_split = one_lesson[-2].split('/')
-
-    lesson_name = convert_lesson_name(lesson_name)
-
-    return [lesson_name, teacher_or_group_name_split]
-
-
-# replacement
 
 
 def get_part_link_by_day(day) -> str:
@@ -182,6 +166,8 @@ def get_audience_array(one_lesson: list) -> list:
     for i in (',', ';'):
         if i in audience:
             return audience.split(i)
+    if audience == '':
+        return [audience]
     return audience.split()
 
 

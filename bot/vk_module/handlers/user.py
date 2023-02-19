@@ -37,8 +37,6 @@ from bot.message_timetable import MessageTimetable
 from bot.vk_module.config import ADMINS_VK
 from bot.vk_module.config import DEFAULT_LIMIT_SUBSCRIPTIONS
 
-# from bot.misc import Keys
-
 
 user_labeler = BotLabeler()
 user_labeler.vbml_ignore_case = True
@@ -107,20 +105,23 @@ async def choice_group__name(event: MessageEvent) -> None:
                         CheckState('choice_name'))
 async def paging_group__list_state(event: MessageEvent) -> None:
     """Обработчик листания списка групп для новых пользователей"""
-    await paging_group__list(event)
+    print("Обработчик листания списка групп для новых пользователей")
+    await paging_group__list(event, add_back_button=False)
 
 
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["g_list"], ind=-2))
-async def paging_group__list(event: MessageEvent, last_ind: int = -2) -> None:
+async def paging_group__list(event: MessageEvent,
+                             last_ind: int = -2,
+                             add_back_button: bool = True) -> None:
     """Обработчик листания списка групп"""
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
     start_ = int(event.payload['cmd'].split()[-1])
 
     group__names_array = Select.group_(grouping=False)
-    add_back_button = ctx_user_storage.get(user_id) != 'new_user'
+    # add_back_button = ctx_user_storage.get(user_id) != 'new_user'
 
     text = AnswerText.choice_name("group_")
     keyboard = Inline.names_list(group__names_array,
@@ -149,7 +150,7 @@ async def choice_teacher_name(event: MessageEvent) -> None:
 
     text = AnswerText.choice_name("teacher")
     keyboard = Inline.names_list(teacher_names_array,
-                                 offset=5,
+                                 offset=4,
                                  short_type_name='t',
                                  row_width=1)
 
@@ -165,24 +166,26 @@ async def choice_teacher_name(event: MessageEvent) -> None:
                         CheckState('choice_name'))
 async def paging_teacher_list_state(event: MessageEvent) -> None:
     """Обработчик листания списка преподавателей для новых пользователей"""
-    await paging_teacher_list(event)
+    await paging_teacher_list(event, add_back_button=False)
 
 
 @user_labeler.raw_event(GroupEventType.MESSAGE_EVENT,
                         MessageEvent,
                         CheckPayload(["t_list"], ind=-2))
-async def paging_teacher_list(event: MessageEvent, last_ind: int = -2) -> None:
+async def paging_teacher_list(event: MessageEvent,
+                              last_ind: int = -2,
+                              add_back_button: bool = True) -> None:
     """Обработчик листания списка преподавателей"""
     user_id = event.object.peer_id
     last_callback_data = get_callback_values(event, last_ind)[-1]
     start_ = int(event.payload['cmd'].split()[-1])
 
     teacher_names_array = Select.teacher()
-    add_back_button = ctx_user_storage.get(user_id) != 'new_user'
+    #add_back_button = ctx_user_storage.get(user_id) != 'new_user'
 
     text = AnswerText.choice_name("teacher")
     keyboard = Inline.names_list(teacher_names_array,
-                                 offset=3,
+                                 offset=4,
                                  start_=start_,
                                  short_type_name='t',
                                  row_width=1,
@@ -336,10 +339,11 @@ async def timetable(message: Message,
         name_id = user_info[1]
 
     view_name = user_info[2]
-    # view_week_day = user_info[3]
-    view_add = user_info[4]
-    view_time = user_info[5]
-    # view_dpo_info = user_info[6]
+    view_type_lesson_mark = user_info[3]
+    # view_week_day = user_info[4]
+    view_add = user_info[5]
+    view_time = user_info[6]
+    # view_dpo_info = user_info[7]
 
     if type_name is None or name_id is None:
         """У пользователя нет основной подписки"""
@@ -415,7 +419,9 @@ async def timetable_paging(event: MessageEvent, last_ind: int = -4) -> None:
 
 
 @user_labeler.message(CommandRule("Настройки", [""], 0))
-async def settings(message: Message, event: MessageEvent = None, edit_text: bool = False) -> None:
+async def settings(message: Message,
+                   event: MessageEvent = None,
+                   edit_text: bool = False) -> None:
     """Обработчик запроса на получение Настроек пользователя"""
     user_id = message.peer_id
     user_settings_data = list(Select.user_info(user_id, table_name="vkontakte"))
@@ -961,7 +967,7 @@ async def view_dpo_information(event: MessageEvent, last_ind: int = -1) -> None:
 
     week_days_id_dpo_array = Select.week_days_timetable(type_name, name_id, "dpo")
 
-    text = f"{name_}\n"
+    text = f"{name_} (ДПО)\n"
     for week_day_id in week_days_id_dpo_array:
         """Перебираем дни недели с ДПО"""
         data_dpo = Select.dpo(type_name, name_, week_day_id)
@@ -1086,7 +1092,7 @@ async def call_schedule(message: Message) -> None:
 
 
 @user_labeler.message(CommandRule("help", ["!", "/"], 0))
-async def help_message(message: Union[Message, Any]) -> None:
+async def help_message(message: Union[Message]) -> None:
     """Вывести help-сообщение"""
     user_id = message.peer_id
     await api.messages.send(user_id=user_id,

@@ -22,7 +22,15 @@ def ready_timetable_by_date(date_: str) -> None:
     connection.commit()
 
 
+def practice_by_group__ids(group__ids: list):
+    """Удалить записи о практике по group__id"""
+    if group__ids:
+        cursor.execute("DELETE FROM practice WHERE group__id = ANY(ARRAY[{0}])".format(group__ids))
+        connection.commit()
+
+'''
 def statistics(date_: str) -> None:
     """"""
     cursor.execute("DELETE FROM stat WHERE date_ = '{0}'::date;".format(date_))
     connection.commit()
+'''

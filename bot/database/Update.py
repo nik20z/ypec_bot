@@ -1,3 +1,5 @@
+from typing import Union
+
 from bot.database.connect import cursor, connection
 
 
@@ -126,6 +128,18 @@ def change_id(table_name: str,
                           column_name,
                           id_,
                           new_id)
+    cursor.execute(query)
+    connection.commit()
+
+
+def headman(group__id: int,
+            user_id: Union[int, str],
+            social_network_type: str = 'tg') -> None:
+    """Связывем id старосты с определённой группой по определённой соц сети"""
+    query = """UPDATE group_ 
+               SET {2}_headman_user = {1} 
+               WHERE group__id = {0}
+               """.format(group__id, user_id, social_network_type)
     cursor.execute(query)
     connection.commit()
 

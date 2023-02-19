@@ -45,7 +45,8 @@ def view_main_timetable(type_name: str,
             SELECT array_agg(DISTINCT num_lesson) AS num_les,
                    array_agg(DISTINCT lesson_name),
                    json_object_agg(DISTINCT COALESCE(NULLIF({1}_name, ''), '...'), audience_name),
-                   array_agg(lesson_type) AS les_type
+                   array_agg(lesson_type) AS les_type,
+                   ARRAY[0]
             FROM main_timetable_info
             WHERE {0}_name = '{2}' AND week_day_id = {3} AND (lesson_type ISNULL OR {4})
             GROUP BY num_lesson, {1}_name
@@ -91,7 +92,8 @@ def dpo(type_name: str, name_: str, week_day_id: int) -> list:
                 SELECT array_agg(DISTINCT num_lesson) AS num_les,
                        array_agg(DISTINCT COALESCE(NULLIF(lesson_name, ''), '...')),
                        json_object_agg(DISTINCT COALESCE(NULLIF({1}_name, ''), '...'), audience_name),
-                       ARRAY[NULL]
+                       ARRAY[NULL],
+                       ARRAY[0]
                 FROM dpo_info
                 WHERE {0}_name = '{2}' AND week_day_id = {3}
                 GROUP BY lesson_name, {1}_name, audience_name
@@ -144,14 +146,15 @@ def ready_timetable(type_name: str,
             SELECT array_agg(DISTINCT num_lesson) AS num_les,
                    array_agg(DISTINCT COALESCE(NULLIF(lesson_name, ''), '...')),
                    json_object_agg(DISTINCT COALESCE(NULLIF({1}_name, ''), '...'), audience_name),
-                   ARRAY[NULL]
+                   ARRAY[NULL],
+                   type_lesson_mark
             FROM ready_timetable_info
             WHERE (date_ = '{2}' AND {0}_name = '{3}') 
                     AND ('{0}' = 'group_'
                         OR (teacher_name IN (SELECT * FROM practice_teacher_names))
                         OR (group__name NOT IN (SELECT * FROM practice_group__names))
                         )
-            GROUP BY lesson_name, {1}_name, audience_name
+            GROUP BY lesson_name, {1}_name, audience_name, type_lesson_mark
             ORDER BY num_les
             """.format(type_name,
                        type_name_invert,
@@ -162,10 +165,12 @@ def ready_timetable(type_name: str,
     cursor.execute(query)
     result.extend(list(cursor.fetchall()))
 
+    """Если у группы идёт практика и при этом поставили пары по заменам"""
     query = """SELECT ARRAY[''],
                       array_agg(DISTINCT COALESCE(NULLIF(lesson_name, ''), '...')),
                       json_object_agg(DISTINCT COALESCE(NULLIF({1}_name, ''), '...'), audience_name),
-                      ARRAY[NULL]
+                      ARRAY[NULL],
+                      ARRAY[0]
                FROM practice_info
                WHERE {0}_name = '{3}' AND '{2}' > start_date AND '{2}' <= stop_date
                GROUP BY lesson_name, {1}_name, audience_name
@@ -180,6 +185,35 @@ def ready_timetable(type_name: str,
     return result
 
 
+def stat_ready_timetable(type_name: str,
+                         name_id: int,
+                         month: str) -> list:
+    """Получить статистику за месяц по типу и id"""
+    query = """
+            WITH type_les AS (SELECT type_lesson_mark
+                              FROM ready_timetable
+                              WHERE {0}_id = {1} AND to_char(date_, 'Mon') = '{2}'),
+            num_all_les AS (SELECT count(*) FROM type_les),
+            num_remote AS (SELECT count(*) FROM type_les WHERE 1 = ANY(type_lesson_mark)),
+            num_lab AS (SELECT count(*) FROM type_les WHERE 2 = ANY(type_lesson_mark)),
+            num_excursion AS (SELECT count(*) FROM type_les WHERE 3 = ANY(type_lesson_mark)),
+            num_practice AS (SELECT count(*) FROM type_les WHERE 4 = ANY(type_lesson_mark)),
+            num_consultation AS (SELECT count(*) FROM type_les WHERE 5 = ANY(type_lesson_mark))
+            
+            SELECT * 
+            FROM num_all_les
+            CROSS JOIN num_remote, 
+                       num_lab, 
+                       num_excursion,
+                       num_practice,
+                       num_consultation
+            """.format(type_name,
+                       name_id,
+                       month)
+    cursor.execute(query)
+    return cursor.fetchone()
+
+
 def query_(query: str) -> list:
     """Выполнить произвольный запрос"""
     cursor.execute(query)
@@ -187,11 +221,12 @@ def query_(query: str) -> list:
 
 
 def query_info_by_name(table_name: str,
+                       value: str = None,
                        info: str = 'id',
                        default_method: bool = False,
-                       value: str = None,
                        similari_value: float = 0.45,
-                       add_where_ilike: bool = False,
+                       check_course: bool = False,
+                       check_number_group: bool = False,
                        limit: int = 1) -> Union[list, str]:
     """Получить данные из конкретной таблицы по конкретному условию для lesson, audience, group_, teacher"""
     if default_method:
@@ -201,22 +236,27 @@ def query_info_by_name(table_name: str,
                     """.format(table_name, info)
     else:
         add_where = ""
-        if add_where_ilike:
-            add_where += "AND {0}_{1} ILIKE '%%{2}%%'".format(table_name, info, value[-1])
+        if table_name == 'group_':
+            if check_course:
+                add_where += "AND {0}_{1} ILIKE '%%{2}%%'".format(table_name, info, value[:2])
+            if check_number_group:
+                add_where += "AND {0}_{1} ILIKE '%%{2}%%'".format(table_name, info, value[-1])
+
         query = """WITH similari AS (SELECT {0}_id,
                                             {0}_name,
-                                            similarity({0}_name, %s::varchar) AS similari_value
+                                            similarity({0}_name, %s::varchar) AS similar_value
                                     FROM {0})
                     SELECT {0}_{1}
                     FROM similari
-                    WHERE similari_value > {2} {3}
-                    ORDER BY similari_value DESC, similari.{0}_name
+                    WHERE similar_value > {2} {3}
+                    ORDER BY similar_value DESC, similari.{0}_name
                     LIMIT {4}
                     """.format(table_name,
                                info,
                                similari_value,
                                add_where,
                                limit)
+
     if value is not None:
         cursor.execute(query, (value,))
         result = _concert_fetchall_to_list(cursor.fetchall())
@@ -236,9 +276,11 @@ def user_info(user_id: int, table_name: str = "telegram") -> list:
                         ARRAY(SELECT ARRAY[teacher_id::text, teacher_name, (teacher_id = ANY(spam_teacher_ids))::text]
                               FROM teacher
                               WHERE ((type_name ISNULL) OR NOT(teacher_id = name_id AND NOT type_name)) AND teacher_id = ANY(teacher_ids)) AS teacher_ids,
-                        spamming, 
+                        spamming,
+                        empty_spamming,
                         pin_msg, 
                         view_name, 
+                        view_type_lesson_mark, 
                         view_week_day,
                         view_add, 
                         view_time,
@@ -258,6 +300,7 @@ def user_info_by_column_names(user_id: int,
         column_names = ["CASE WHEN type_name THEN 'group_' WHEN not type_name THEN 'teacher' ELSE NULL END",
                         "name_id",
                         "view_name",
+                        "view_type_lesson_mark",
                         "view_week_day",
                         "view_add",
                         "view_time",
@@ -399,7 +442,7 @@ def value_by_id(table_name_: str,
 
 
 @_check_none
-def name_by_id(type_name: str, name_id: str) -> list:
+def name_by_id(type_name: str, name_id: int) -> list:
     """Получить name_ группы или преподавателя по id"""
     query = "SELECT {0}_name FROM {0} WHERE {0}_id = {1}".format(type_name, name_id)
     cursor.execute(query)
@@ -493,7 +536,15 @@ def user_ids_spamming(type_name: str,
     """Получить список пользователей, которые подписаны на рассылку"""
     query = ""
     if table_name == "telegram":
-        query = """SELECT user_id, pin_msg, view_name, view_add, view_time, view_dpo_info 
+        query = """SELECT user_id, 
+                          empty_spamming, 
+                          pin_msg, 
+                          view_name, 
+                          view_type_lesson_mark, 
+                          view_week_day, 
+                          view_add, 
+                          view_time, 
+                          view_dpo_info 
                    FROM {0} 
                    WHERE {2} = ANY(spam_{1}_ids) AND spamming
                    """.format(table_name,
@@ -501,19 +552,23 @@ def user_ids_spamming(type_name: str,
                               name_id)
     elif table_name == "vkontakte":
         type_name_bool = "True" if type_name == 'group_' else "False"
-        query = """SELECT user_id, pin_msg, view_name, view_add, view_time 
+        query = """SELECT user_id, 
+                          pin_msg, 
+                          view_name, 
+                          view_add, 
+                          view_time 
                            FROM {0} 
-                           WHERE type_name = {1} AND name_id = {2} AND spamming
-                           """.format(table_name,
-                                      type_name_bool,
-                                      name_id)
+                   WHERE type_name = {1} AND name_id = {2} AND spamming
+                   """.format(table_name,
+                              type_name_bool,
+                              name_id)
     cursor.execute(query)
     return cursor.fetchall()
 
 
-def dates_ready_timetable(month: str = None,
-                          type_name: str = None,
+def dates_ready_timetable(type_name: str = None,
                           name_id: int = None,
+                          month: str = None,
                           type_date: str = 'datetime',
                           type_sort: str = 'DESC') -> list:
     """Список дат с готовым расписанием для определённого месяца"""
@@ -523,23 +578,23 @@ def dates_ready_timetable(month: str = None,
 
     if month is None:
         query = """SELECT DISTINCT {0}, date_
-                                   FROM ready_timetable
-                                   WHERE {1}_id = {2}
-                                   ORDER BY date_ {3}
-                                   """.format(date_column,
-                                              type_name,
-                                              name_id,
-                                              type_sort)
+                   FROM ready_timetable
+                   WHERE {1}_id = {2}
+                   ORDER BY date_ {3}
+                   """.format(date_column,
+                              type_name,
+                              name_id,
+                              type_sort)
     else:
         query = """SELECT DISTINCT {0}, date_
-                           FROM ready_timetable
-                           WHERE {2}_id = {3} AND to_char(date_, 'Mon') = '{1}'
-                           ORDER BY date_ {4}
-                           """.format(date_column,
-                                      month,
-                                      type_name,
-                                      name_id,
-                                      type_sort)
+                   FROM ready_timetable
+                   WHERE {2}_id = {3} AND to_char(date_, 'Mon') = '{1}'
+                   ORDER BY date_ {4}
+                   """.format(date_column,
+                              month,
+                              type_name,
+                              name_id,
+                              type_sort)
     cursor.execute(query)
     return _concert_fetchall_to_list(cursor.fetchall())
 
@@ -628,15 +683,6 @@ def count_all_users_by_dates(table_name: str = "telegram",
                """.format(table_name, order_by, limit)
     cursor.execute(query)
     return cursor.fetchall()
-
-
-'''
-def user_ids_vk_by_sync_code(sync_code: int):
-    """Получить user_id_vk с определённым sync_code"""
-    query = "SELECT * FROM vkontakte WHERE sync_code = {0} AND spamming".format(sync_code)
-    cursor.execute(query)
-    return concert_fetchall_to_list(cursor.fetchall())
-'''
 
 
 def lesson_names_from_ready_timetable_info() -> list:

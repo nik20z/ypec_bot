@@ -1,21 +1,10 @@
 from datetime import datetime, date, timedelta
+from typing import Union
 
 from bot.config import CALL_SCHEDULE
 
 
-def get_day_week_by_id(week_day_id: int):
-    day_week_by_id = {0: 'Понедельник',
-                      1: 'Вторник',
-                      2: 'Среда',
-                      3: 'Четверг',
-                      4: 'Пятница',
-                      5: 'Суббота',
-                      6: 'Воскресенье'
-                      }
-    return day_week_by_id.get(week_day_id)
-
-
-def get_week_day_id_by_name(week_day_name: str):
+def get_week_day_id_by_name(week_day_name: str) -> Union[str, None]:
     """Получить id дня недели по названию"""
     days_week = {'понедельник': 0,
                  'вторник': 1,
@@ -28,7 +17,7 @@ def get_week_day_id_by_name(week_day_name: str):
     return days_week.get(week_day_name.lower(), None)
 
 
-def month_translate(month_name: str):
+def month_translate(month_name: str) -> Union[str, None]:
     """Перевести название месяца на русский язык"""
     month_d = {'jan': 'январь',
                'feb': 'февраль',
@@ -50,7 +39,7 @@ def month_translate(month_name: str):
         return res.title()
 
 
-def week_day_translate(week_day_name: str):
+def week_day_translate(week_day_name: str) -> Union[str, None]:
     """Перевести название дня недели на русский язык"""
     week_day_d = {'monday': 'понедельник',
                   'mon': 'понедельник',
@@ -78,14 +67,14 @@ def week_day_translate(week_day_name: str):
         return res.title()
 
 
-def get_week_day_name_by_id(wee_day_id: int,
+def get_week_day_name_by_id(week_day_id: int,
                             type_case: str = "default",
-                            bold: bool = True):
+                            bold: bool = True) -> str:
     """Получить название дня недели по id"""
     week_array = {'default': ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
                   'genitive': ['понедельника', 'вторника', 'среды', 'четверга', 'пятницы', 'субботы'],
                   'prepositional': ['понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу']}
-    week_day_text = week_array[type_case][int(wee_day_id)].title()
+    week_day_text = week_array[type_case][int(week_day_id)].title()
     if bold:
         return f"<b>{week_day_text}</b>"
     return week_day_text
@@ -94,8 +83,8 @@ def get_week_day_name_by_id(wee_day_id: int,
 def get_day_text(date_: datetime = None,
                  days: int = 0,
                  delete_sunday: bool = True,
-                 format_str: str = "%d.%m.%Y"):
-    """Получить отформатированную дату"""
+                 format_str: str = "%d.%m.%Y") -> str:
+    """Получить отформатированную дату в формате строки"""
     if date_ is None:
         date_ = date.today()
 
@@ -105,7 +94,7 @@ def get_day_text(date_: datetime = None,
     return (date_ + timedelta(days=days)).strftime(format_str)
 
 
-def get_week_day_id_by_date_(date_, format_str: str = "%d.%m.%Y"):
+def get_week_day_id_by_date_(date_: Union[datetime, str], format_str: str = "%d.%m.%Y") -> int:
     """Получить номер недели по дате"""
     try:
         return datetime.strptime(date_, format_str).weekday()
@@ -130,7 +119,7 @@ column_name_by_callback = {'sp_gr': 'spam_group_',
 
 def get_one_time(type_week_day: str,
                  num_les: str,
-                 ind: int = 0):
+                 ind: int = 0) -> Union[str, None]:
     """Получить время звонка по типу дня недели, номеру пары и индексу"""
     try:
         return CALL_SCHEDULE[type_week_day].get(num_les)[ind]
@@ -138,16 +127,20 @@ def get_one_time(type_week_day: str,
         return None
 
 
-def get_time_text(time_str: str, format_str: str):
+def get_time_text(time_str: str, format_str: str) -> str:
     """Вернуть отформатированную строку с временем (по шаблону)"""
     if time_str is None:
         return ""
     return format_str.format(time_str)
 
 
-def get_time_for_timetable(date_str: str, num_lesson_array: list):
+def get_time_for_timetable(date_str: str, num_lesson_array: list) -> str:
     """Получить время начала и окончания занятий"""
     #num_lesson_array = [int(num) for x in num_lesson_array for num in x]
+    if not num_lesson_array:
+        """Если отсутствуют пары"""
+        return ""
+
     start_num_les = min(num_lesson_array)
     stop_num_les = max(num_lesson_array)
 
@@ -165,12 +158,12 @@ def get_time_for_timetable(date_str: str, num_lesson_array: list):
     return f"{start_time_text} {stop_time_text}\n"
 
 
-def get_joined_text_by_list(array_: list, char_: str = ' / '):
+def get_joined_text_by_list(array_: list, char_: str = ' / ') -> str:
     """Преобразуем список в строку элементов, записанных через разделитель"""
     return char_.join([x for x in array_ if x is not None])
 
 
-def get_paired_num_lesson(num_array: list):
+def get_paired_num_lesson(num_array: list) -> str:
     """Объединяем пары"""
     start_num = min(num_array)
     stop_num = max(num_array)

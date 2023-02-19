@@ -3,7 +3,6 @@ from aiogram.types import BotCommand
 from aiogram.utils import executor
 
 # My Modules
-from bot.database import Table
 from bot.tg_module.filters import register_all_filters
 from bot.tg_module.handlers import register_all_handlers
 
@@ -37,8 +36,6 @@ async def on_shutdown(dp: Dispatcher) -> None:
 
 
 async def start_telegram_bot() -> None:
-    Table.create()
-    Table.create_view()
 
     await set_default_commands(dp)
 

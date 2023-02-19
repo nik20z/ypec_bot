@@ -149,16 +149,7 @@ def dates_ready_timetable(name_: str, month: str) -> str:
 
 def help_admin() -> str:
     return "Список команд для админов\n" \
-           "/delete_user - удалить себя из таблицы\n" \
-           "/get_main_timetable {args} - спарсить основное расписание по названию группы\n" \
-           "/update_balance - обновить баланс Qiwi\n" \
-           "/update_timetable - спарсить замены и составить по ним готовое расписание\n" \
-           "/info_log - потоковый log\n" \
-           "/mailing {args} - рассылка сообщений для всех пользователей\n" \
-           "/mailing_test - протестировать рассылку\n" \
-           "/set_future_updates - обновить информацию о будущих обновлениях\n" \
-           "/stat - получить статистику\n" \
-           "/restart_bot - перезапустить бота"
+           "/stat - получить статистику\n"
 
 
 def other_messages() -> str:

@@ -17,7 +17,7 @@ def get_event_last_callback_data(event: MessageEvent, last_ind: int) -> dict:
     return {"cmd": last_callback_data}
 
 
-async def answer_callback(event) -> None:
+async def answer_callback(event: MessageEvent) -> None:
     """Отправить ответ на нажатие кнопки"""
     await api.messages.send_message_event_answer(
         event_id=event.object.event_id,

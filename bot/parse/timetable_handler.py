@@ -11,9 +11,56 @@ from bot.functions import get_week_day_id_by_date_
 from bot.parse.functions import combine_teacher_names_and_audience_arrays
 from bot.parse.functions import convert_timetable_to_dict
 from bot.parse.functions import convert_lesson_name
+from bot.parse.functions import check_practice
 
 from bot.parse import MainTimetable
 from bot.parse import Replacements
+
+
+def _get_type_lesson_array(lesson_name: str, audience: str) -> list:
+    """Добавляем смайлик-маркировку
+        0. 🟠 - обычные пары (оранжевый)
+        1. 🟢 - дистант (зелёный)
+        2. 🔵 - лабы (синий)
+        3. ⚪️ - экскурсия (белый)
+        4. 🟡 - практика или п/з(желтый)
+        5. 🟣 - консультация (фиолетовый)
+        6. 🔴 - экзамен или к/р (красный)
+    день подготовки к экзамену*
+    """
+    type_lesson_mark_array = []
+    default_lesson_name = lesson_name
+    lesson_name = str(lesson_name).lower()
+    audience = str(audience).lower()
+
+    if 'экзам' in lesson_name or 'к/р' in lesson_name:
+        """Если экзамен или к/р"""
+        type_lesson_mark_array.append(6)
+
+    if 'консу' in lesson_name:
+        """Если консультация"""
+        type_lesson_mark_array.append(5)
+
+    if 'п/з' in lesson_name or check_practice(default_lesson_name):
+        """Если п/з или практика"""
+        type_lesson_mark_array.append(4)
+
+    if 'экс' in audience or 'каток' in audience:
+        """Если экскурсия"""
+        type_lesson_mark_array.append(3)
+
+    if 'л/р' in lesson_name:
+        """Если лабы"""
+        type_lesson_mark_array.append(2)
+
+    if 'дист' in audience:
+        """Если дистант"""
+        type_lesson_mark_array.append(1)
+
+    if not type_lesson_mark_array:
+        type_lesson_mark_array.append(0)
+
+    return type_lesson_mark_array
 
 
 class TimetableHandler:
@@ -43,7 +90,7 @@ class TimetableHandler:
         self.config.read("config.ini")
 
         self.ready_timetable_data = []
-        self.date_replacement = get_day_text(days=1)
+        self.date_replacement = get_day_text(days=1)  # по дефолту берём завтрашнюю дату (исключая вс)
         self.week_lesson_type = get_week_day_id_by_date_(self.date_replacement)
 
         self.mt = MainTimetable()
@@ -51,18 +98,26 @@ class TimetableHandler:
 
         self.group__names = Select.all_info("group_", column_name="group__name")
         if not self.group__names:
-            self.group__names = self.mt.get_array_names_by_type_name('group_')
-            Insert.group_(self.mt.group__names)
+            self.actualization_group__and_teacher_names(group_check=True)
 
         self.teacher_names = Select.all_info("teacher", column_name="teacher_name")
         if not self.teacher_names:
-            self.teacher_names = self.mt.get_array_names_by_type_name('teacher')
-            Insert.teacher(self.mt.teacher_names)
+            self.actualization_group__and_teacher_names(teacher_check=True)
 
         self.lesson_names = set()
 
         self.method = self.config['PARSE']['main_method']
         self.parse_table_replacement_mode = self.config['PARSE']['table_replacement_mode']
+
+    def actualization_group__and_teacher_names(self, group_check: bool = False, teacher_check: bool = False):
+        """Актуализируем список групп и преподавателей"""
+        if group_check:
+            self.group__names = self.mt.get_array_names_by_type_name('group_')
+            Insert.group_(self.mt.group__names)
+
+        if teacher_check:
+            self.teacher_names = self.mt.get_array_names_by_type_name('teacher')
+            Insert.teacher(self.mt.teacher_names)
 
     async def get_main_timetable(self,
                                  type_name: str = None,
@@ -73,6 +128,8 @@ class TimetableHandler:
 
         #self.mt.group__names = self.group__names
         #self.mt.teacher_names = self.teacher_names
+
+        self.actualization_group__and_teacher_names(group_check=True, teacher_check=True)
 
         self.mt.data.clear()
 
@@ -92,15 +149,25 @@ class TimetableHandler:
 
         self.rep.data.clear()
 
+        if not Select.check_filling_table('replacement'):
+            """Если появились замены, то актуализируем данные о группах и преподавателях"""
+            self.actualization_group__and_teacher_names(group_check=True, teacher_check=True)
+
         await self.rep.parse(day=day)
         self.date_replacement = self.rep.date
         self.week_lesson_type = self.rep.week_lesson_type
 
-        # если замен нет
+        fresh_date_ready_timetable = Select.fresh_ready_timetable_date(type_date="string")
+
+        # если замен нет или в БД ещё нет расписания на дату, полученную с сайта
         if not self.rep.data:
             Table.delete('replacement')
             Table.delete('replacement_temp')
             return "NO"
+
+        elif self.date_replacement != fresh_date_ready_timetable:
+            Table.delete('replacement')
+            Table.delete('replacement_temp')
 
         Insert.lesson(self.rep.lesson_names)
         Insert.practice(self.rep.data_practice)
@@ -137,6 +204,12 @@ class TimetableHandler:
         if date_ is None:
             date_ = self.date_replacement
 
+        #names_rep_diff_group_ = Select.names_rep_different('group_', date_)
+        #names_rep_diff_teacher = Select.names_rep_different('teacher', date_)
+
+        #if names_rep_diff_group_ or names_rep_diff_teacher:
+            #"""Если есть именения в заменах"""
+
         week_day_id = get_week_day_id_by_date_(date_)
 
         self.ready_timetable_data.clear()
@@ -147,6 +220,10 @@ class TimetableHandler:
                                          week_day_id=week_day_id,
                                          lesson_type=lesson_type)
 
+        # Delete.ready_timetable_by_date(self.date_replacement)
+        """
+        Необходимо удалять только определённые строки по дате, типу профиля и id, а не всё по одной дате
+        """
         Insert.ready_timetable(self.ready_timetable_data)
 
     def get_names_array_by_type_name(self, type_name: str) -> list:
@@ -174,6 +251,10 @@ class TimetableHandler:
         :param lesson_type: тип недели (числитель/знаменатель)
         :return: None
         """
+        query_names_in_practice = """SELECT {0}_name 
+                                     FROM practice_info 
+                                     WHERE '{1}' >= start_date AND '{1}' <= stop_date""".format(type_name, date_)
+        names_in_practice = Select.query_(query_names_in_practice)
 
         if names_array is None:
             names_array = []
@@ -182,11 +263,13 @@ class TimetableHandler:
             names_array = self.get_names_array_by_type_name(type_name)
 
         for name_ in names_array:
+            timetable = {}
 
-            timetable = Select.main_timetable(type_name=type_name,
-                                              name_=name_,
-                                              week_day_id=week_day_id,
-                                              lesson_type=lesson_type)
+            if (name_,) not in names_in_practice:
+                timetable = Select.main_timetable(type_name=type_name,
+                                                  name_=name_,
+                                                  week_day_id=week_day_id,
+                                                  lesson_type=lesson_type)
 
             replacement = Select.replacement(type_name, name_)
 
@@ -290,7 +373,7 @@ class TimetableHandler:
                                 timetable_dict[num_lesson].append(new_lesson_info)
 
                             else:
-                                timetable_dict[num_lesson][ind] = new_lesson_info
+                                timetable_dict[num_lesson] = [new_lesson_info]
 
                             break
 
@@ -329,8 +412,9 @@ class TimetableHandler:
                 ind = 0
                 for teacher_name in teacher_names_array:
                     audience = audience_array[ind]
+                    type_lesson_mark_array = _get_type_lesson_array(lesson_name, audience)
 
-                    data_one_lesson = (date_, name_, num_lesson, lesson_name, teacher_name, audience)
+                    data_one_lesson = (date_, name_, num_lesson, lesson_name, teacher_name, audience, type_lesson_mark_array)
 
                     self.lesson_names.add(lesson_name)
                     self.ready_timetable_data.append(data_one_lesson)

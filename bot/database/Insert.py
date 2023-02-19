@@ -1,9 +1,10 @@
 from bot.database.connect import cursor, connection
 
 from bot.database import Select
+from bot.database import Delete
 
 
-def get_list_tuples(a: list) -> list:
+def _get_list_tuples(a: list) -> list:
     """Конвертировать массив кортежей в обычный массив"""
     return [(x,) for x in a if x is not None]
 
@@ -48,6 +49,8 @@ def replacement(data: list, table_name: str = "replacement") -> None:
 
 def practice(data: list) -> None:
     """Занести данные о практике"""
+    group__ids = [Select.id_by_name('group_', x[0]) for x in data]
+    Delete.practice_by_group__ids(group__ids)
     query = """INSERT INTO practice
                             (group__id,
                              lesson_name_id,
@@ -56,15 +59,6 @@ def practice(data: list) -> None:
                              start_date,
                              stop_date)
                         VALUES ({0},{1},{2},{3},%s,%s)
-                        ON CONFLICT (group__id, teacher_id) DO UPDATE
-                        SET (lesson_name_id, 
-                             audience_id, 
-                             start_date, 
-                             stop_date) 
-                        = (EXCLUDED.lesson_name_id, 
-                           EXCLUDED.audience_id, 
-                           EXCLUDED.start_date, 
-                           EXCLUDED.stop_date)
                         """.format(Select.query_info_by_name('group_', default_method=True),
                                    Select.query_info_by_name('lesson', similari_value=0.8),
                                    Select.query_info_by_name('teacher'),
@@ -81,8 +75,9 @@ def ready_timetable(data: list) -> None:
                              num_lesson,
                              lesson_name_id,
                              teacher_id,
-                             audience_id)
-                VALUES (%s,{0},%s,{1},{2},{3})
+                             audience_id,
+                             type_lesson_mark)
+                VALUES (%s,{0},%s,{1},{2},{3},%s)
                 ON CONFLICT DO NOTHING
                 """.format(Select.query_info_by_name('group_', default_method=True),
                            Select.query_info_by_name('lesson', similari_value=0.8),
@@ -120,7 +115,7 @@ def group_(group__names: list) -> None:
                 (group__name)
                 VALUES (%s)
                 ON CONFLICT DO NOTHING"""
-    cursor.executemany(query, get_list_tuples(names_array))
+    cursor.executemany(query, _get_list_tuples(names_array))
     connection.commit()
 
 
@@ -133,7 +128,7 @@ def teacher(teacher_names: list) -> None:
                 (teacher_name)
                 VALUES (%s)
                 ON CONFLICT DO NOTHING"""
-    cursor.executemany(query, get_list_tuples(names_array))
+    cursor.executemany(query, _get_list_tuples(names_array))
     connection.commit()
 
 
@@ -146,7 +141,7 @@ def lesson(lesson_names: list) -> None:
     Необходимо сделать ещё один прогон массива names_array для того, чтобы найти максимально похожие предметы
     и в таком случае просто не добавлять в таблицу новый
     
-    буду можно высчитывать расстояние Ливенштейна, но нужно учесть, что могут быть п/з п/г и тд
+    можно высчитывать расстояние Ливенштейна, но нужно учесть, что могут быть п/з п/г и тд
     
     для начала убираем предметы с лишними или недостающими пробелами
     """
@@ -155,7 +150,7 @@ def lesson(lesson_names: list) -> None:
                 (lesson_name)
                 VALUES (%s)
                 ON CONFLICT DO NOTHING"""
-    cursor.executemany(query, get_list_tuples(names_array))
+    cursor.executemany(query, _get_list_tuples(names_array))
     connection.commit()
 
 
@@ -168,7 +163,7 @@ def audience(audience_names: list) -> None:
                 (audience_name)
                 VALUES (%s)
                 ON CONFLICT DO NOTHING"""
-    cursor.executemany(query, get_list_tuples(names_array))
+    cursor.executemany(query, _get_list_tuples(names_array))
     connection.commit()
 
 

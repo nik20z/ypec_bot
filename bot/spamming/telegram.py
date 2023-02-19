@@ -60,31 +60,44 @@ class SpammingHandlerTelegram:
                 for user_data in spam_user_data:
                     """Перебираем массивы с данными пользователей"""
                     try:
-                        [user_id, pin_msg, view_name, view_add, view_time, view_dpo_info] = user_data
+                        [user_id,
+                         empty_spamming,
+                         pin_msg,
+                         view_name,
+                         view_type_lesson_mark,
+                         view_week_day,
+                         view_add,
+                         view_time,
+                         view_dpo_info] = user_data
 
-                        text = MessageTimetable(name_,
-                                                self.date_,
-                                                data_ready_timetable,
-                                                data_dpo=data_dpo,
-                                                view_name=view_name,
-                                                view_add=view_add,
-                                                view_time=view_time,
-                                                view_dpo_info=view_dpo_info).get()
-                        try:
-                            """Если пользователь просит закрепить сообщение"""
-                            spam_message = await self.send_spam_message(user_id, text)
-                            logger.info(f"{user_id} | {type_name} | {name_id} | {name_}")
+                        if data_ready_timetable or data_dpo or empty_spamming:
+                            """Если есть данные по расписанию или чеовек получает оповещение об ОТСУТСТВИИ расписания"""
 
-                            if pin_msg:
-                                await self.pin_spam_message(user_id, spam_message)
+                            text = MessageTimetable(name_,
+                                                    self.date_,
+                                                    data_ready_timetable,
+                                                    data_dpo=data_dpo,
+                                                    view_name=view_name,
+                                                    view_type_lesson_mark=view_type_lesson_mark,
+                                                    view_week_day=view_week_day,
+                                                    view_add=view_add,
+                                                    view_time=view_time,
+                                                    view_dpo_info=view_dpo_info).get()
+                            try:
+                                """Если пользователь просит закрепить сообщение"""
+                                spam_message = await self.send_spam_message(user_id, text)
+                                logger.info(f"{spam_message.message_id} | {user_id} | {type_name} | {name_id} | {name_}")
 
-                        except (BotBlocked, BotKicked, UserDeactivated, ChatNotFound) as e:
-                            """Проблема с пользователем"""
-                            Update.user_settings(user_id, 'spamming', 'False', convert_val_text=False)
-                            logger.info(f"{e} {user_id}")
-                            # Update.user_settings(user_id, 'bot_blocked', 'True', convert_val_text=False)
+                                if pin_msg:
+                                    await self.pin_spam_message(user_id, spam_message)
 
-                        # await asyncio.sleep(.05)
+                            except (BotBlocked, BotKicked, UserDeactivated, ChatNotFound) as e:
+                                """Проблема с пользователем"""
+                                Update.user_settings(user_id, 'spamming', 'False', convert_val_text=False)
+                                logger.info(f"{e} {user_id}")
+                                # Update.user_settings(user_id, 'bot_blocked', 'True', convert_val_text=False)
+
+                            # await asyncio.sleep(.05)
 
                     except Exception as e:
                         await send_report_except(e)
