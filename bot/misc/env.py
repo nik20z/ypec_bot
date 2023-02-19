@@ -40,3 +40,6 @@ class Communicate:
     INSTAGRAM: Final = environ.get('INSTAGRAM', "https://www.instagram.com/your.oldfr1end")
     OFFICIAL_SITE: Final = environ.get('OFFICIAL_SITE', "https://www.ypec.ru/")
     OFFICIAL_VK_GROUP: Final = environ.get('OFFICIAL_VK_GROUP', "https://vk.com/ypecnews")
+
+class GoogleDrive:
+    SAMPLES: Final = environ.get('SAMPLES', "https://drive.google.com/drive/folders/1WI_PiaWfNFRwZLJvi2m18M5lACA4T9wp?usp=sharing")
