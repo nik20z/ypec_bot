@@ -12,13 +12,13 @@ from bot.tg_module.config import GOD_ID_TG
 from bot.tg_module.config import ADMINS_TG
 from bot.tg_module import answers
 
-from bot.database import Insert
+# from bot.database import Insert
 from bot.database import Update
 from bot.database import Select
 from bot.database import Table
 from bot.database import Delete
 
-from bot.parse.functions import get_rub_balance
+# from bot.parse.functions import get_rub_balance
 
 from bot.parse import TimetableHandler
 from bot.parse import Dpo
@@ -121,7 +121,7 @@ async def mailing_start(message: Message) -> None:
     """Рассылка сообщений """
     count = 0
     count_success = 0
-    user_ids_spamming = Select.user_ids()
+    user_ids_spamming = Select.user_ids(not_blocked=True)
     user_id = message.chat.id
     sending_message = message.get_args()
 
@@ -153,11 +153,13 @@ async def delete_user(message: Message) -> None:
     Delete.user(message.chat.id)
 
 
+'''
 async def set_future_updates(message: Message) -> None:
     """Установить список ошибок и планы на обновления"""
     text = message.get_args()
     Insert.config("future_updates", text)
     await message.answer(text)
+'''
 
 
 async def get_main_timetable(message: Message) -> None:
@@ -209,12 +211,14 @@ async def update_dpo(message: Message) -> None:
     await message.answer('Данные о ДПО перенесены из файла в БД')
 
 
+'''
 async def update_balance(message: Message) -> None:
     """Обновляем данные о балансе Qiwi-кошелька"""
     rub_balance = str(get_rub_balance())
     Insert.config('rub_balance', rub_balance)
 
     await message.answer(f"Баланс Qiwi-кошелька обновлён: {rub_balance} ₽")
+'''
 
 
 async def update_timetable(message: Message):
@@ -244,7 +248,7 @@ async def create_statistics(message: Message) -> None:
         text += f"{name_[0]} {count_subscribe}\n"
     text += '\n'
 
-    # График роста аудитории по дням
+    # График прироста аудитории по дням
     '''
     text += "График роста аудитории\n"
     for data_ in Select.count_all_users_by_dates():
@@ -284,8 +288,7 @@ async def update_config(message: Message) -> None:
 
 
 async def test(message: Message) -> None:
-    """Тестовая фунция"""
-    '''
+    """Тестовая функция"""
     import asyncio
     loop = asyncio.get_event_loop()
     pending = asyncio.all_tasks(loop=loop)
@@ -294,8 +297,6 @@ async def test(message: Message) -> None:
         coroutine_name = task.get_coro()
         print(str(coroutine_name))
         print()
-    '''
-    pass
 
 
 def register_admin_handlers(dp: Dispatcher):
@@ -330,15 +331,17 @@ def register_admin_handlers(dp: Dispatcher):
 
     dp.register_message_handler(mailing_start,
                                 IDFilter(chat_id=ADMINS_TG),
-                                commands=['mailing', 'mailing_test'])
+                                commands=['mailing'])
 
     dp.register_message_handler(delete_user,
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['delete_user'])
 
+    '''
     dp.register_message_handler(set_future_updates,
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['set_future_updates'])
+    '''
 
     dp.register_message_handler(get_main_timetable,
                                 IDFilter(chat_id=ADMINS_TG),
@@ -348,9 +351,11 @@ def register_admin_handlers(dp: Dispatcher):
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['update_dpo'])
 
+    '''
     dp.register_message_handler(update_balance,
                                 IDFilter(chat_id=ADMINS_TG),
                                 commands=['update_balance'])
+    '''
 
     dp.register_message_handler(update_timetable,
                                 IDFilter(chat_id=ADMINS_TG),

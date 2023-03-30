@@ -15,10 +15,10 @@ dp: Dispatcher
 async def set_default_commands(dp: Dispatcher) -> None:
     await dp.bot.set_my_commands([
         BotCommand("start", "Запуск бота"),
-        BotCommand("timetable", "Расписание"),
-        BotCommand("settings", "Настройки"),
-        BotCommand("help", "Помощь"),
-        BotCommand("call_schedule", "Расписание звонков"),
+        # BotCommand("timetable", "Расписание"),
+        # BotCommand("settings", "Настройки"),
+        # BotCommand("help", "Помощь"),
+        # BotCommand("call_schedule", "Расписание звонков"),
         BotCommand("show_keyboard", "Показать клавиатуру")
     ])
 

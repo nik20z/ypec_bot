@@ -19,12 +19,12 @@ from bot.parse import Replacements
 
 def _get_type_lesson_array(lesson_name: str, audience: str) -> list:
     """Добавляем смайлик-маркировку
-        0. 🟠 - обычные пары (оранжевый)
+        0. ⚪ - обычные пары (оранжевый)
         1. 🟢 - дистант (зелёный)
         2. 🔵 - лабы (синий)
-        3. ⚪️ - экскурсия (белый)
+        3. 🟣 - экскурсия (белый)
         4. 🟡 - практика или п/з(желтый)
-        5. 🟣 - консультация (фиолетовый)
+        5. 🟠 - консультация (фиолетовый)
         6. 🔴 - экзамен или к/р (красный)
     день подготовки к экзамену*
     """
@@ -91,7 +91,7 @@ class TimetableHandler:
 
         self.ready_timetable_data = []
         self.date_replacement = get_day_text(days=1)  # по дефолту берём завтрашнюю дату (исключая вс)
-        self.week_lesson_type = get_week_day_id_by_date_(self.date_replacement)
+        self.week_lesson_type = None  # get_week_day_id_by_date_(self.date_replacement)
 
         self.mt = MainTimetable()
         self.rep = Replacements()
@@ -263,15 +263,26 @@ class TimetableHandler:
             names_array = self.get_names_array_by_type_name(type_name)
 
         for name_ in names_array:
+            print("name_", name_)
             timetable = {}
 
             if (name_,) not in names_in_practice:
                 timetable = Select.main_timetable(type_name=type_name,
                                                   name_=name_,
                                                   week_day_id=week_day_id,
-                                                  lesson_type=lesson_type)
+                                                  lesson_type=lesson_type,
+                                                  check_practice=False,
+                                                  date_=date_)
+
+            print("timetable")
+            print(timetable)
+            print()
 
             replacement = Select.replacement(type_name, name_)
+            print("replacement")
+            print(replacement)
+            print()
+            print()
 
             timetable_dict = convert_timetable_to_dict(timetable)
 

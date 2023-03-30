@@ -24,7 +24,7 @@ def get_condition_smile(bool_value: bool) -> str:
     return '✅' if bool_value else '☑'
 
 
-def split_array(arr: list, n: int):
+def split_array(arr: list, n: int) -> list:
     """Разбить массив на несколько массивов длиной n - """
     a = []
     for i in range(0, len(arr), n):
@@ -39,7 +39,7 @@ def get_close_button():
 
 def get_paging_button(callback, direction="left"):
     """Получить кнопку листания вправо-влево"""
-    return Button('⬅' if direction == "left" else '➡').inline(callback)
+    return Button('«' if direction == "left" else '»').inline(callback)
 
 
 def get_back_button(last_callback_data,

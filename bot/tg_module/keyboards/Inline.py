@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup
 
 from .util import Button
-from .util import get_close_button
+# from .util import get_close_button
 from .util import get_condition_smile
 from .util import get_paging_button
 from .util import split_array
@@ -165,16 +165,19 @@ def user_settings(user_settings_data: list,
     # teacher names
     keyboard = create_name_list(keyboard, teachers_array, "t", row_width=row_width_teacher)
 
+    call_schedule_btn = Button("⏰").inline("s cs")
     main_settings_btn = Button("⚙").inline("s ms")
-    support_btn = Button("Поддержать").inline("s support")
+    support_btn = Button("🌝").inline("s support")
 
-    keyboard.add(main_settings_btn, support_btn)
+    keyboard.add(call_schedule_btn, main_settings_btn, support_btn)
 
+    '''
     if type_name:
-        ads_btn = Button("Чертежи в Компас на заказ👀").inline('', url=Communicate.DEVELOPER)
+        ads_btn = Button("Чертежи в Компас на заказ👀").inline('', url=Communicate.DEVELOPER_TG)
         keyboard.add(ads_btn)
+    '''
 
-    keyboard.add(get_close_button())
+    # keyboard.add(get_close_button())
 
     return keyboard
 
@@ -227,16 +230,17 @@ def support(callback_data: str, last_callback_data: str) -> InlineKeyboardMarkup
     """Меню поддержки"""
     keyboard = InlineKeyboardMarkup()
 
-    vk_btn = Button('💬 Вконтакте 💬').inline("", url=Communicate.DEVELOPER)
+    # vk_btn = Button('💬 Вконтакте 💬').inline("", url=Communicate.DEVELOPER_VK)
+    tg_btn = Button('Telegram').inline("", url=Communicate.DEVELOPER_TG)
     inst_btn = Button('📷 Instagram 📷').inline("", url=Communicate.INSTAGRAM)
-    future_updates_btn = Button("Баги и будущие обновы").inline(f"{callback_data} future_updates")
-    donate_btn = Button("💳 Отправить донат 💳").inline(f"{callback_data} donate")
+    # future_updates_btn = Button("Баги и будущие обновы").inline(f"{callback_data} future_updates")
+    donate_btn = Button("💳 Помочь с оплатой хостинга 💳").inline(f"{callback_data} donate")
     back_btn = get_back_button(last_callback_data)
 
-    keyboard.add(vk_btn)
+    # keyboard.add(vk_btn)
+    keyboard.add(tg_btn)
     keyboard.add(inst_btn)
-    keyboard.add(future_updates_btn)
-    # keyboard.add(report_problem_btn)
+    # keyboard.add(future_updates_btn)
     keyboard.add(donate_btn)
     keyboard.add(back_btn)
 
@@ -281,7 +285,7 @@ def group__card(group__user_info: list,
     department_smile = {0: '💰', 1: '🧪', 2: '🛠️'}.get(department, '')
     group__name_btn = Button(f"{department_smile} {group__name} {department_smile}").inline(f"* {group__name}")
 
-    main_subscribe_btn = Button(get_condition_smile(main_subscribe)).inline(f"{callback_data} m_sub_gr")
+    main_subscribe_btn = Button(f"⭐ {get_condition_smile(main_subscribe)}").inline(f"{callback_data} m_sub_gr")
 
     week_days_main_timetable_btn = Button("Основное расписание").inline(f"{callback_data} wdmt")
     history_ready_timetable_btn = Button("История").inline(f"{callback_data} mhrt")
@@ -322,7 +326,7 @@ def teacher_card(teacher_user_info: list,
     gender_smile = '' if gender is None else '👨🏻‍🏫 ' if gender else '👩🏻‍🏫 '
     teacher_name_btn = Button(f"{gender_smile}{teacher_name}").inline(f"* {teacher_name}")
 
-    main_subscribe_btn = Button(get_condition_smile(main_subscribe)).inline(f"{callback_data} m_sub_tch")
+    main_subscribe_btn = Button(f"⭐ {get_condition_smile(main_subscribe)}").inline(f"{callback_data} m_sub_tch")
 
     week_days_main_timetable_btn = Button("Основное расписание").inline(f"{callback_data} wdmt")
     history_ready_timetable_btn = Button("История").inline(f"{callback_data} mhrt")

@@ -206,17 +206,16 @@ class Replacements:
                         self.data.append(one_lesson_data)
 
                         """Если имеем дело с практикой"""
-                        if num_lesson == '':
-                            if check_practice(replace_for_lesson):
-                                [stop_date, start_date] = get_dates_practice(replace_for_lesson)
-                                if stop_date is not None and start_date is not None:
-                                    one_practice = (group__name,
-                                                    replace_for_lesson,
-                                                    teacher_name,
-                                                    audience,
-                                                    stop_date,
-                                                    start_date)
-                                    self.data_practice.append(one_practice)
+                        if check_practice(replace_for_lesson):
+                            [stop_date, start_date] = get_dates_practice(replace_for_lesson, default_date=self.date)
+                            if stop_date is not None and start_date is not None:
+                                one_practice = (group__name,
+                                                replace_for_lesson,
+                                                teacher_name,
+                                                audience,
+                                                stop_date,
+                                                start_date)
+                                self.data_practice.append(one_practice)
 
                         """Формируем массив пар"""
                         if replace_for_lesson not in ('Нет', 'По расписанию'):

@@ -209,10 +209,10 @@ def check_practice(lesson_name: str) -> bool:
     return False
 
 
-def get_dates_practice(lesson_name) -> list:
+def get_dates_practice(lesson_name: str, default_date: str = None) -> list:
     """Получаем дату начала и окончания практики"""
-    start_date = None
-    stop_date = None
+    start_date = default_date
+    stop_date = default_date
     current_year = datetime.now().year
     lesson_name_replace = lesson_name.replace('-', ' ')
     lesson_name_split = lesson_name_replace.split()

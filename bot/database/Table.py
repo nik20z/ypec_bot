@@ -70,57 +70,59 @@ view_create_queries = {
 }
 
 table_create_queries = {
-"telegram": """CREATE TABLE IF NOT EXISTS telegram (
-                                        user_id bigint NOT NULL PRIMARY KEY,
+    "telegram": """CREATE TABLE IF NOT EXISTS telegram (
+                                        user_id bigint PRIMARY KEY,
                                         user_name text,
                                         joined date,
                                         type_name boolean,
                                         name_id smallint,        									
-                                        group__ids smallint[],
-                                        teacher_ids smallint[],
-                                        spam_group__ids smallint[],
-                                        spam_teacher_ids smallint[],
-                                        spamming boolean DEFAULT True,
-                                        empty_spamming boolean DEFAULT True,
-                                        pin_msg boolean DEFAULT False, 
-                                        view_name boolean DEFAULT True, 
-                                        view_type_lesson_mark boolean DEFAULT False,
-                                        view_week_day boolean DEFAULT False,
-                                        view_add boolean DEFAULT True, 
-                                        view_time boolean DEFAULT False,
-                                        view_dpo_info boolean DEFAULT False,
-                                        ban boolean DEFAULT False,
-                                        number_bans smallint DEFAULT 0,
+                                        group__ids smallint[] NOT NULL DEFAULT '{}',
+                                        teacher_ids smallint[] NOT NULL DEFAULT '{}',
+                                        spam_group__ids smallint[] NOT NULL DEFAULT '{}',
+                                        spam_teacher_ids smallint[] NOT NULL DEFAULT '{}',
+                                        spamming boolean NOT NULL DEFAULT True,
+                                        empty_spamming boolean NOT NULL DEFAULT True,
+                                        pin_msg boolean NOT NULL DEFAULT False, 
+                                        view_name boolean NOT NULL DEFAULT True, 
+                                        view_type_lesson_mark boolean NOT NULL DEFAULT False,
+                                        view_week_day boolean NOT NULL DEFAULT False,
+                                        view_add boolean NOT NULL DEFAULT True, 
+                                        view_time boolean NOT NULL DEFAULT True,
+                                        view_dpo_info boolean NOT NULL DEFAULT False,
+                                        ban boolean NOT NULL DEFAULT False,
+                                        number_bans smallint NOT NULL DEFAULT 0,
                                         timeout_ban timestamp without time zone,
-                                        bot_blocked boolean DEFAULT False
+                                        bot_blocked boolean NOT NULL DEFAULT False,
+                                        spamming_bot_message_id integer
                                         );""",
 
     "vkontakte": """CREATE TABLE IF NOT EXISTS vkontakte (
-                                        user_id bigint NOT NULL PRIMARY KEY,
+                                        user_id bigint PRIMARY KEY,
                                         user_name text,
                                         joined date,
                                         type_name boolean,
                                         name_id smallint,        									
-                                        group__ids smallint[],
-                                        teacher_ids smallint[],
-                                        spam_group__ids smallint[],
-                                        spam_teacher_ids smallint[],
-                                        spamming boolean DEFAULT True,
-                                        empty_spamming boolean DEFAULT True,
-                                        pin_msg boolean DEFAULT True, 
-                                        view_name boolean DEFAULT True, 
-                                        view_add boolean DEFAULT True, 
-                                        view_time boolean DEFAULT False,
-                                        view_dpo_info boolean DEFAULT False,
-                                        ban boolean DEFAULT False,
-                                        number_bans smallint DEFAULT 0,
+                                        group__ids smallint[] NOT NULL DEFAULT '{}',
+                                        teacher_ids smallint[] NOT NULL DEFAULT '{}',
+                                        spam_group__ids smallint[] NOT NULL DEFAULT '{}',
+                                        spam_teacher_ids smallint[] NOT NULL DEFAULT '{}',
+                                        spamming boolean NOT NULL DEFAULT True,
+                                        empty_spamming boolean NOT NULL DEFAULT True,
+                                        pin_msg boolean NOT NULL DEFAULT True, 
+                                        view_name boolean NOT NULL DEFAULT True, 
+                                        view_add boolean NOT NULL DEFAULT True, 
+                                        view_time boolean NOT NULL DEFAULT False,
+                                        view_dpo_info boolean NOT NULL DEFAULT False,
+                                        ban boolean NOT NULL DEFAULT False,
+                                        number_bans smallint NOT NULL DEFAULT 0,
                                         timeout_ban timestamp without time zone,
-                                        bot_blocked boolean DEFAULT False,
+                                        bot_blocked boolean NOT NULL DEFAULT False,
+                                        spamming_bot_message_id integer,
                                         sync_code bigint REFERENCES telegram (user_id)
                                         );""",
 
     "group_": """CREATE TABLE IF NOT EXISTS group_ (
-                                        group__id smallserial NOT NULL PRIMARY KEY,
+                                        group__id smallserial PRIMARY KEY,
                                         group__name varchar(10) NOT NULL UNIQUE,
                                         department smallint,
                                         tg_headman_user bigint REFERENCES telegram (user_id),
@@ -128,7 +130,7 @@ table_create_queries = {
                                         );""",
 
     "teacher": """CREATE TABLE IF NOT EXISTS teacher (
-                                        teacher_id smallserial NOT NULL PRIMARY KEY,
+                                        teacher_id smallserial PRIMARY KEY,
                                         teacher_name varchar(35) NOT NULL UNIQUE,
                                         gender boolean,
                                         tg_form_master_user bigint REFERENCES telegram (user_id),
@@ -136,12 +138,12 @@ table_create_queries = {
                                         );""",
 
     "lesson": """CREATE TABLE IF NOT EXISTS lesson (
-                                        lesson_id smallserial NOT NULL PRIMARY KEY,
+                                        lesson_id smallserial PRIMARY KEY,
                                         lesson_name text NOT NULL UNIQUE
                                         );""",
 
     "audience": """CREATE TABLE IF NOT EXISTS audience (
-                                        audience_id smallserial NOT NULL PRIMARY KEY,
+                                        audience_id smallserial PRIMARY KEY,
                                         audience_name text NOT NULL UNIQUE
                                         );""",
 
@@ -200,12 +202,12 @@ table_create_queries = {
                                         );""",
 
     "config": """CREATE TABLE IF NOT EXISTS config (
-                                        key_ text NOT NULL PRIMARY KEY,
+                                        key_ text PRIMARY KEY,
                                         value_ text DEFAULT NULL
                                         );""",
 
     "stat": """CREATE TABLE IF NOT EXISTS stat (
-                                        date_ date NOT NULL PRIMARY KEY,
+                                        date_ date PRIMARY KEY,
                                         rep_new_time time,
                                         new_users smallint,
                                         cnt_activate smallint,

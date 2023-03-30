@@ -177,7 +177,7 @@ def support(callback_data: str, last_callback_data: str):
     """Меню поддержки"""
     keyboard = Keyboard(inline=True)
 
-    vk_btn = OpenLink(Communicate.DEVELOPER, '💬 Вконтакте 💬')
+    vk_btn = OpenLink(Communicate.DEVELOPER_VK, '💬 Вконтакте 💬')
     inst_btn = OpenLink(Communicate.INSTAGRAM, '📷 Instagram 📷')
     future_updates_btn = Callback("Баги и будущие обновы", {"cmd": f"{callback_data} future_updates"})
     donate_btn = Callback("💳 Отправить донат 💳", {"cmd": f"{callback_data} donate"})

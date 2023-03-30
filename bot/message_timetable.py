@@ -30,7 +30,7 @@ class MessageTimetable:
         self.data_dpo = data_dpo
         self.start_text = start_text
 
-        # персональные нстройки отображения сообщения
+        # персональные настройки отображения сообщения
         self.view_name = view_name
         self.view_type_lesson_mark = view_type_lesson_mark
         self.view_week_day = view_week_day
@@ -51,9 +51,9 @@ class MessageTimetable:
         """Если необходимо отображать name_"""
         if self.view_name:
             if self.format_ and self.mode == "telegram":
-                return f"<b>{self.name_}</b>\n"
+                return f"<b>{self.name_}</b>"
             else:
-                return f"{self.name_}\n"
+                return f"{self.name_}"
         return ''
 
     def check_view_week_day(self) -> str:
@@ -61,7 +61,7 @@ class MessageTimetable:
         if self.view_week_day:
             week_day_id = datetime.strptime(self.date_str, '%d.%m.%Y').isoweekday() - 1
             bold = self.type_format == 'txt'
-            return f" ({get_week_day_name_by_id(week_day_id, bold=bold)})"
+            return f" ({get_week_day_name_by_id(week_day_id, type_case='short_view', bold=bold)})"
         return ""
 
     def first_string_format(self) -> str:
@@ -176,34 +176,32 @@ class MessageTimetable:
     def check_type_lesson(self) -> str:
         """Добавляем смайлик-маркировку"""
         '''
-            0. 🟠 - обычные пары (оранжевый)
+            0. ⚪ - обычные пары (оранжевый)
             1. 🟢 - дистант (зелёный)
             2. 🔵 - лабы (синий)
-            3. ⚪️ - экскурсия (белый)
-            4. 🟡 - практика или п/з (желтый)
-            5. 🟣 - консультация (фиолетовый)
+            3. 🟣 - экскурсия (белый)
+            4. 🟡 - практика или п/з(желтый)
+            5. 🟠 - консультация (фиолетовый)
             6. 🔴 - экзамен или к/р (красный)
         '''
-        smile_type_lesson = {0: '🟠',
+        smile_type_lesson = {0: '⚪',
                              1: '🟢',
                              2: '🔵',
-                             3: '⚪',
+                             3: '🟣',
                              4: '🟡',
-                             5: '🟣',
+                             5: '🟠',
                              6: '🔴'}
         type_lesson_mark_message = ''
         if self.view_type_lesson_mark and self.type_lesson_mark_array and None not in self.type_lesson_mark_array:
             for ind_type_lesson in sorted(self.type_lesson_mark_array, reverse=True):
                 type_lesson_mark_message += smile_type_lesson.get(ind_type_lesson, '')
-            return type_lesson_mark_message + '\n'
-        else:
-            return ''
+        return type_lesson_mark_message
 
     def get(self) -> str:
         """Получаем текстовое представление расписания по заданным параметрам"""
 
         """Проверяем наличие данных о расписании"""
-        #self.check_empty()
+        #  self.check_empty()
 
         """Добавляем name_ группы при необходимости"""
         view_name_message = self.check_view_name()
@@ -227,8 +225,7 @@ class MessageTimetable:
             dpo_message += self.get_message_lessons(self.data_dpo)
 
         """Составляем сообщение из кусков"""
-        self.message = f"{view_name_message}" \
-                       f"{type_lesson_mark_message}" \
+        self.message = f"{view_name_message} {type_lesson_mark_message}\n" \
                        f"{first_string_message}" \
                        f"{lessons_message}" \
                        f"{view_time_message}" \

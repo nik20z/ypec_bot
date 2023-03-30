@@ -63,10 +63,20 @@ def view_main_timetable(type_name: str,
 def main_timetable(type_name: str,
                    name_: str,
                    week_day_id: int = 0,
-                   lesson_type: bool = True) -> list:
+                   lesson_type: bool = True,
+                   check_practice: bool = False,
+                   date_: str = None) -> list:
     """Получаем расписание для объединения с заменами"""
     type_name_invert = _get_type_name_invert(type_name)
     state_lesson_type = 'lesson_type' if lesson_type else "True" if lesson_type is None else 'NOT lesson_type'
+
+    # Добавляем условие, отметяющие из распсиания те группы/преподавателей, которые сейчас на практике
+    add_where_check_practice = ""
+    if check_practice and date_ is not None:
+        add_where_check_practice = """AND {0}_name NOT IN (SELECT {0}_name 
+                                                           FROM practice_info 
+                                                           WHERE '{1}' >= start_date AND '{1}' <= stop_date)
+                                   """.format(type_name_invert, date_)
 
     query = """
             SELECT num_lesson,
@@ -74,13 +84,15 @@ def main_timetable(type_name: str,
                    array_agg({1}_name),
                    array_agg(audience_name)
             FROM main_timetable_info
-            WHERE {0}_name = '{2}' AND week_day_id = {3} AND (lesson_type ISNULL OR {4})
+            WHERE {0}_name = '{2}' AND week_day_id = {3} AND (lesson_type ISNULL OR {4}) {5}
             GROUP BY num_lesson, lesson_name
             """.format(type_name,
                        type_name_invert,
                        name_,
                        week_day_id,
-                       state_lesson_type)
+                       state_lesson_type,
+                       add_where_check_practice)
+    print(query)
     cursor.execute(query)
     return cursor.fetchall()
 
@@ -641,9 +653,13 @@ def fresh_ready_timetable_date(type_name: str = None,
     return cursor.fetchone()
 
 
-def user_ids(table_name: str = "telegram") -> list:
+def user_ids(table_name: str = "telegram", not_blocked: bool = False) -> list:
     """Массив id пользователей"""
-    query = "SELECT user_id FROM {0}".format(table_name)
+    if not_blocked:
+        query = "SELECT user_id FROM {0} WHERE NOT bot_blocked".format(table_name)
+    else:
+        query = "SELECT user_id FROM {0}".format(table_name)
+
     cursor.execute(query)
     return _concert_fetchall_to_list(cursor.fetchall())
 

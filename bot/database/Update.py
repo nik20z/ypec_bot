@@ -109,8 +109,7 @@ def user_settings_array(user_id: int,
                                name_,
                                value,
                                f"{name_}_ids" if remove_ is None else f"array_remove({name_}_ids, {value}::smallint)",
-                               f"{name_}_ids" if append_ is None else f"array_append({name_}_ids, {value}::smallint)"
-                               )
+                               f"{name_}_ids" if append_ is None else f"array_append({name_}_ids, {value}::smallint)")
     cursor.execute(query)
     connection.commit()
     return cursor.fetchone()[0]

@@ -177,7 +177,8 @@ async def choice_group_(callback: CallbackQuery, state: FSMContext) -> None:
         data_ready_timetable = Select.ready_timetable(type_name, date_, group__name)
         text = MessageTimetable(group__name,
                                 date_,
-                                data_ready_timetable).get()
+                                data_ready_timetable,
+                                view_time=True).get()
 
     keyboard = Reply.default()
 
@@ -188,15 +189,17 @@ async def choice_group_(callback: CallbackQuery, state: FSMContext) -> None:
 
     await callback.message.delete()
     bot_message = await callback.message.answer(text, reply_markup=keyboard)
-    user_state_data = await state.get_data()
+    # user_state_data = await state.get_data()
     await state.finish()
 
     logger.info(f"callback {bot_message.message_id} {user_id} {group__name} {group__id}")
 
+    '''
     if "send_help_message" in user_state_data:
         """Если нужно новый пользователь - выводим help-сообщение"""
         await asyncio.sleep(2)
         await help_message(callback.message)
+    '''
 
 
 async def choice_teacher(callback: CallbackQuery, state: FSMContext) -> None:
@@ -220,7 +223,8 @@ async def choice_teacher(callback: CallbackQuery, state: FSMContext) -> None:
         data_ready_timetable = Select.ready_timetable(type_name, date_, teacher_name)
         text = MessageTimetable(teacher_name,
                                 date_,
-                                data_ready_timetable).get()
+                                data_ready_timetable,
+                                view_time=True).get()
 
     keyboard = Reply.default()
 
@@ -289,9 +293,10 @@ async def timetable(message: Message,
 
     if type_name is None or name_id is None:
         """У пользователя нет основной подписки"""
-        logger.info(f"message {user_id} {type_name} {name_id}")
         text = AnswerText.no_main_subscription()
         bot_message = await message.answer(text)
+
+        logger.info(f"message {bot_message.message_id} {user_id} {type_name} {name_id}")
 
     else:
         name_ = Select.name_by_id(type_name, name_id)
@@ -317,6 +322,7 @@ async def timetable(message: Message,
             text = AnswerText.not_exist_timetable(name_)
             keyboard = Reply.default()
             bot_message = await message.answer(text, reply_markup=keyboard)
+
             logger.info(f"message {bot_message.message_id} {user_id} {name_} {name_id} {date_} {paging} {'date_ is None'}")
 
         else:
@@ -376,9 +382,9 @@ async def command_timetable(message: Message) -> None:
 
 
 @rate_limit(1)
-async def settings(message: Message,
-                   callback: CallbackQuery = None,
-                   edit_text: bool = False) -> None:
+async def personal_area(message: Message,
+                        callback: CallbackQuery = None,
+                        edit_text: bool = False) -> None:
     """Обработчик запроса на получение Настроек пользователя"""
     user_id = message.chat.id
     user_settings_data = list(Select.user_info(user_id))
@@ -389,7 +395,7 @@ async def settings(message: Message,
         name_ = Select.name_by_id(table_name, name_id)
         user_settings_data[1] = name_
 
-    text = AnswerText.settings()
+    text = AnswerText.personal_area()
     keyboard = Inline.user_settings(user_settings_data)
 
     if edit_text:
@@ -403,14 +409,26 @@ async def settings(message: Message,
 
 
 @rate_limit(1)
-async def command_settings(message: Message) -> None:
-    """Обработчик команды /settings"""
-    await settings(message)
+async def command_personal_area(message: Message) -> None:
+    """Обработчик команды /personal_area"""
+    await personal_area(message)
 
 
 async def settings_callback(callback: CallbackQuery) -> None:
     """Обработчик CallbackQuery на возвращение к меню Настроек"""
-    await settings(callback.message, callback, edit_text=True)
+    await personal_area(callback.message, callback, edit_text=True)
+
+
+async def call_schedule(callback: CallbackQuery) -> None:
+    """Обработчик CallbackQuery для просмотра расписания звонков"""
+    user_id = callback.message.chat.id
+
+    text = AnswerText.call_schedule()
+    keyboard = Inline.get_back_button("s", return_keyboard=True)
+
+    bot_message = await callback.message.edit_text(text, reply_markup=keyboard)
+    await callback.bot.answer_callback_query(callback.id)
+    logger.info(f"callback {bot_message.message_id} {user_id}")
 
 
 async def main_settings(callback: CallbackQuery) -> None:
@@ -635,7 +653,7 @@ async def lessons_list_by_teacher(callback: CallbackQuery, last_ind=-2) -> None:
 
 
 async def week_days_main_timetable(callback: CallbackQuery, last_ind=-1) -> None:
-    """Показать список дней недели дня получения основного расписания"""
+    """Показать список дней недели для получения основного расписания"""
     user_id = callback.message.chat.id
     [callback_data_split, last_callback_data] = get_callback_values(callback, last_ind)
     type_name = column_name_by_callback.get(callback_data_split[-3])
@@ -1039,7 +1057,7 @@ async def close(callback: CallbackQuery) -> None:
 
 
 @rate_limit(1)
-async def call_schedule(message: Message) -> None:
+async def call_schedule_command(message: Message) -> None:
     """Расписание звонков"""
     user_id = message.chat.id
     text = AnswerText.call_schedule()
@@ -1138,19 +1156,22 @@ def register_user_handlers(dp: Dispatcher) -> None:
                                 commands=['start'],
                                 state='*')
 
-    dp.register_message_handler(timetable, Text(contains=['Расписание'], ignore_case=True))
+    dp.register_message_handler(timetable, Text(equals=['Расписание'], ignore_case=True))
 
     dp.register_callback_query_handler(timetable_paging,
                                        lambda call: check_call(call, ['t_p'], ind=-4))
 
     dp.register_message_handler(command_timetable, commands=['timetable'])
 
-    dp.register_message_handler(settings, Text(contains=['Настройки'], ignore_case=True))
+    dp.register_message_handler(personal_area, Text(equals=['Личный кабинет', 'Настройки'], ignore_case=True))
 
-    dp.register_message_handler(command_settings, commands=['settings'])
+    dp.register_message_handler(command_personal_area, commands=['personal_area'])
 
     dp.register_callback_query_handler(settings_callback,
                                        lambda call: check_call(call, ['s']))
+
+    dp.register_callback_query_handler(call_schedule,
+                                       lambda call: check_call(call, ['cs']))
 
     dp.register_callback_query_handler(main_settings,
                                        lambda call: check_call(call, ['ms']))
@@ -1221,7 +1242,7 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(close,
                                        lambda call: call.data == 'close', state='*')
 
-    dp.register_message_handler(call_schedule,
+    dp.register_message_handler(call_schedule_command,
                                 commands=['call_schedule'],
                                 state='*')
 

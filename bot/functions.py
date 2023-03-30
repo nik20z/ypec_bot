@@ -73,7 +73,8 @@ def get_week_day_name_by_id(week_day_id: int,
     """Получить название дня недели по id"""
     week_array = {'default': ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
                   'genitive': ['понедельника', 'вторника', 'среды', 'четверга', 'пятницы', 'субботы'],
-                  'prepositional': ['понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу']}
+                  'prepositional': ['понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'],
+                  'short_view': ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']}
     week_day_text = week_array[type_case][int(week_day_id)].title()
     if bold:
         return f"<b>{week_day_text}</b>"
@@ -150,12 +151,19 @@ def get_time_for_timetable(date_str: str, num_lesson_array: list) -> str:
     start_time = get_one_time(type_week_day, start_num_les)
     stop_time = get_one_time(type_week_day, stop_num_les, ind=-1)
 
-    start_time_text = get_time_text(start_time, "С {0}")
-    stop_time_text = get_time_text(stop_time, "До {0}")
+    start_time_text = get_time_text(start_time, "{0}")
+    stop_time_text = get_time_text(stop_time, "{0}")
 
-    if start_time_text == "" and stop_time_text == "":
+    if start_time_text == '' and stop_time_text == '':
         return ""
-    return f"{start_time_text} {stop_time_text}\n"
+
+    if start_time_text == '':
+        return f"До {stop_time_text}"
+    
+    if stop_time_text == '':
+        return f"С {start_time_text}"
+    
+    return f"{start_time_text} — {stop_time_text}\n"
 
 
 def get_joined_text_by_list(array_: list, char_: str = ' / ') -> str:
